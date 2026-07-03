@@ -65,11 +65,7 @@
       <div class="reminder-row">
         <div class="reminder-toggle">
           <span>中午提醒</span>
-          <label class="toggle">
-            <div class="toggle-track" :class="{ active: notifEnabled }" @click="toggleNotification">
-              <div class="toggle-thumb"></div>
-            </div>
-          </label>
+          <van-switch v-model="notifEnabled" @change="onToggleNotification" />
         </div>
         <div class="reminder-time-select">
           <span>时间</span>
@@ -149,11 +145,7 @@
     <div class="card notification-card">
       <div class="notification-toggle">
         <span>⏰ 中午打卡提醒</span>
-        <label class="toggle">
-          <div class="toggle-track" :class="{ active: notifEnabled }" @click="toggleNotification">
-            <div class="toggle-thumb"></div>
-          </div>
-        </label>
+        <van-switch v-model="notifEnabled" @change="onToggleNotification" />
       </div>
     </div>
 
@@ -413,10 +405,9 @@ function dismissCelebration() {
   newBadge.value = null
 }
 
-function toggleNotification() {
-  notifEnabled.value = !notifEnabled.value
-  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, notifEnabled.value ? 'true' : 'false')
-  if (notifEnabled.value) {
+function onToggleNotification(val) {
+  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, val ? 'true' : 'false')
+  if (val) {
     // 请求通知权限并发送测试通知
     if ('Notification' in window) {
       Notification.requestPermission().then(permission => {
@@ -432,7 +423,7 @@ function toggleNotification() {
   } else {
     cancelReminder()
   }
-  showToast({ message: notifEnabled.value ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
+  showToast({ message: val ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
 }
 
 // ===== 提醒调度 =====

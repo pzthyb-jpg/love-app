@@ -62,11 +62,7 @@
           </div>
         </div>
         <div class="setting-action">
-          <label class="toggle">
-            <div class="toggle-track" :class="{ active: notificationEnabled }" @click="toggleNotification">
-              <div class="toggle-thumb"></div>
-            </div>
-          </label>
+          <van-switch v-model="notificationEnabled" @change="onToggleNotification" />
         </div>
       </div>
       <div class="setting-divider"></div>
@@ -223,10 +219,9 @@ function onCustomTimeChange() {
   safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
 }
 
-function toggleNotification() {
-  notificationEnabled.value = !notificationEnabled.value
-  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, notificationEnabled.value ? 'true' : 'false')
-  showToast({ message: notificationEnabled.value ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
+function onToggleNotification(val) {
+  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, val ? 'true' : 'false')
+  showToast({ message: val ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
 }
 
 // 导出数据
