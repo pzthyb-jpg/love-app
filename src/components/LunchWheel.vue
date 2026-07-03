@@ -56,7 +56,7 @@ const pointerBounce = ref(false)
 let currentRotation = 0
 let animationId = null
 const COLORS = [
-  '#FF6B9D', '#C084FC', '#FFD700', '#A8E6CF', '#FF8A80',
+  '#E8758A', '#C084FC', '#FFD700', '#A8E6CF', '#FF8A80',
   '#81D4FA', '#FFB74D', '#CE93D8', '#80CBC4', '#F48FB1',
   '#B39DDB', '#FFCC80', '#90CAF9', '#A5D6A7', '#EF9A9A'
 ]
@@ -127,7 +127,7 @@ function drawWheel(rotation = 0) {
   ctx.arc(center, center, 28, 0, 2 * Math.PI)
   ctx.fillStyle = '#FFFFFF'
   ctx.fill()
-  ctx.strokeStyle = '#FF6B9D'
+  ctx.strokeStyle = '#E8758A'
   ctx.lineWidth = 3
   ctx.stroke()
 
@@ -244,9 +244,9 @@ watch(() => props.restaurants, () => {
   inset: -10px;
   border-radius: 50%;
   background: conic-gradient(
-    #FF6B9D, #C084FC, #FFD700, #A8E6CF, #FF8A80,
-    #FF6B9D, #C084FC, #FFD700, #A8E6CF, #FF8A80,
-    #FF6B9D
+    #E8758A, #C084FC, #FFD700, #A8E6CF, #FF8A80,
+    #E8758A, #C084FC, #FFD700, #A8E6CF, #FF8A80,
+    #E8758A
   );
   animation: ringSpin 3s linear infinite;
   mask: radial-gradient(circle at center, transparent 152px, black 154px);
@@ -296,7 +296,7 @@ watch(() => props.restaurants, () => {
 .pointer-arrow {
   font-size: 28px;
   color: var(--primary);
-  text-shadow: 0 2px 8px rgba(255, 107, 157, 0.4);
+  text-shadow: 0 2px 8px rgba(232, 117, 138, 0.4);
   line-height: 1;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.15));
 }

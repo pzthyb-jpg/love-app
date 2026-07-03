@@ -542,7 +542,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   margin-bottom: var(--space-lg);
-  border: 2px solid rgba(255, 107, 157, 0.15);
+  border: 2px solid rgba(232, 117, 138, 0.15);
 }
 .video-preview,
 .photo-preview {
