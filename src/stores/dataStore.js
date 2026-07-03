@@ -5,8 +5,17 @@ import {
   safeGetJSON,
   safeSetJSON,
   safeGetString,
-  safeSetString
+  safeSetString,
+  savePhoto
 } from '../composables/useStorage.js'
+
+// 检查写入结果，失败时弹出 Toast 提示
+function checkWriteResult(success, key) {
+  if (!success) {
+    window.__showToast?.(`💾 写入 ${STORAGE_KEYS[key] || key} 失败，存储空间可能已满`, 'error')
+  }
+  return success
+}
 
 // 响应式状态
 const state = reactive({
@@ -41,40 +50,40 @@ const state = reactive({
 // 操作函数
 function addCheckin(record) {
   state.checkinHistory.unshift(record)
-  safeSetJSON(STORAGE_KEYS.CHECKIN_HISTORY, state.checkinHistory)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_HISTORY, state.checkinHistory), 'CHECKIN_HISTORY')
 }
 
 function addWish(wish) {
   state.wishes.unshift(wish)
-  safeSetJSON(STORAGE_KEYS.WISHES, state.wishes)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.WISHES, state.wishes), 'WISHES')
 }
 
 function updateWish(id, updates) {
   const idx = state.wishes.findIndex(w => w.id === id)
   if (idx !== -1) {
     state.wishes[idx] = { ...state.wishes[idx], ...updates }
-    safeSetJSON(STORAGE_KEYS.WISHES, state.wishes)
+    checkWriteResult(safeSetJSON(STORAGE_KEYS.WISHES, state.wishes), 'WISHES')
   }
 }
 
 function deleteWish(id) {
   state.wishes = state.wishes.filter(w => w.id !== id)
-  safeSetJSON(STORAGE_KEYS.WISHES, state.wishes)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.WISHES, state.wishes), 'WISHES')
 }
 
 function addLunchRecord(record) {
   state.lunchHistory.unshift(record)
-  safeSetJSON(STORAGE_KEYS.LUNCH_HISTORY, state.lunchHistory)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.LUNCH_HISTORY, state.lunchHistory), 'LUNCH_HISTORY')
 }
 
 function addRestaurant(restaurant) {
   state.restaurants.push(restaurant)
-  safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants), 'RESTAURANTS')
 }
 
 function removeRestaurant(name) {
   state.restaurants = state.restaurants.filter(r => r.name !== name)
-  safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants), 'RESTAURANTS')
 }
 
 function resetRestaurants() {
@@ -90,35 +99,35 @@ function resetRestaurants() {
     { name: '越南河粉', emoji: '🍲', distance: '1.3km', rating: 4.2, tags: ['东南亚', '清淡'] },
     { name: '麻辣香锅', emoji: '🔥', distance: '0.7km', rating: 4.5, tags: ['辣', '川菜'] }
   ]
-  safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants), 'RESTAURANTS')
 }
 
 function addMessage(msg) {
   state.messages.push(msg)
-  safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
 }
 
 function updateMessage(id, updates) {
   const idx = state.messages.findIndex(m => m.id === id)
   if (idx !== -1) {
     state.messages[idx] = { ...state.messages[idx], ...updates }
-    safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages)
+    checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
   }
 }
 
 function deleteMessage(id) {
   state.messages = state.messages.filter(m => m.id !== id)
-  safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
 }
 
 function updateStreak(streakData) {
   Object.assign(state.checkinStreak, streakData)
-  safeSetJSON(STORAGE_KEYS.CHECKIN_STREAK, state.checkinStreak)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_STREAK, state.checkinStreak), 'CHECKIN_STREAK')
 }
 
 function addBadge(badge) {
   state.checkinBadges.push(badge)
-  safeSetJSON(STORAGE_KEYS.CHECKIN_BADGES, state.checkinBadges)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_BADGES, state.checkinBadges), 'CHECKIN_BADGES')
 }
 
 function setAnniversary(dateStr) {
