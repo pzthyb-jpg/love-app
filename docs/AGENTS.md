@@ -40,10 +40,10 @@ love-app/
 - 每日打卡记录保存在 localStorage
 
 ### 2. 🍽️ 午餐大转盘
-- 获取用户位置（Geolocation API）
-- 查询附近 3km 内的餐厅（高德地图 API）
-- 转盘随机选择吃什么
-- 支持手动添加/删除餐厅
+- 预置 10 家精选餐厅（含距离、评分、标签）
+- Canvas 绘制转盘，随机选择吃什么
+- 支持手动添加/删除/重置餐厅列表
+- 转盘历史记录保存在 localStorage
 
 ### 3. ✨ 愿望池
 - 提交愿望或吐槽内容
@@ -53,6 +53,6 @@ love-app/
 ## 架构约束
 
 - **单向依赖**: css/ 无依赖，js/ 模块间不互相 import（通过全局命名空间）
-- **浏览器 API**: 仅使用标准 Web API（Geolocation、Camera、Notification、localStorage）
+- **浏览器 API**: 仅使用标准 Web API（Camera、Notification、localStorage）
 - **无后端**: 纯前端应用，零服务端依赖
 - **移动优先**: 以 375px-414px 宽度为设计基准
