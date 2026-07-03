@@ -147,7 +147,7 @@
 </template>
 
 <script setup>
-import { showToast } from 'vant'
+import { showToast, showConfirmDialog } from 'vant'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
@@ -274,10 +274,13 @@ function cancelEdit() {
 }
 
 function confirmDeleteMessage(msg) {
-  if (window.confirm(`确定删除这条留言吗？\n"${msg.text.slice(0, 30)}..."`)) {
+  showConfirmDialog({
+    title: '确定删除？',
+    message: `确定删除这条留言吗？\n"${msg.text.slice(0, 30)}..."`
+  }).then(() => {
     deleteMessage(msg.id)
     showToast({ message: '🗑️ 留言已删除' })
-  }
+  }).catch(() => {})
 }
 
 // 密码重置

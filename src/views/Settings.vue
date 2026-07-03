@@ -147,27 +147,13 @@
       </ul>
     </div>
 
-    <!-- 清除确认弹窗 -->
-    <Teleport to="body">
-      <div v-if="showClearConfirm" class="dialog-overlay" @click.self="showClearConfirm = false">
-        <div class="dialog-box">
-          <h3>⚠️ 确认清除</h3>
-          <p>此操作将清空全部应用数据，包括打卡记录、照片、愿望、留言等所有内容，且不可恢复。</p>
-          <p style="color:var(--coral);font-weight:600;">确定要继续吗？</p>
-          <div class="dialog-actions">
-            <button class="btn btn-secondary btn-small" @click="showClearConfirm = false">取消</button>
-            <button class="btn btn-primary btn-small" @click="clearAllData" style="background:var(--coral);">确认清除 💔</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
+    <!-- 清除确认弹窗（由 Vant showConfirmDialog 替代） -->
 
   </div>
 </template>
 
 <script setup>
-import { showToast } from 'vant'
+import { showToast, showConfirmDialog } from 'vant'
 import { ref, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { STORAGE_KEYS, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
@@ -196,9 +182,6 @@ const customReminderTime = ref(safeGetString(KEY_CUSTOM_REMINDER_TIME, '12:00'))
 
 // 导入文件引用
 const importInputRef = ref(null)
-
-// 清除确认
-const showClearConfirm = ref(false)
 
 // 保存设置
 function saveSettings() {
@@ -315,7 +298,14 @@ function importData(e) {
 
 // 清除数据
 function confirmClearAllData() {
-  showClearConfirm.value = true
+  showConfirmDialog({
+    title: '⚠️ 确认清除',
+    message: '此操作将清空全部应用数据，包括打卡记录、照片、愿望、留言等所有内容，且不可恢复。\n\n确定要继续吗？'
+  }).then(() => {
+    clearAllData()
+  }).catch(() => {
+    // 用户取消
+  })
 }
 
 function clearAllData() {

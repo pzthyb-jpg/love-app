@@ -160,7 +160,7 @@
 </template>
 
 <script setup>
-import { showToast } from 'vant'
+import { showToast, showConfirmDialog } from 'vant'
 import { ref, computed } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { getTodaysMessage, formatMessageText } from '../composables/useMessages.js'
@@ -309,11 +309,14 @@ function markAsFulfilled() {
 
 function confirmDelete() {
   if (!selectedWish.value) return
-  if (window.confirm('确定删除这条内容吗？')) {
+  showConfirmDialog({
+    title: '确定删除？',
+    message: '确定删除这条内容吗？'
+  }).then(() => {
     deleteWish(selectedWish.value.id)
     hapticFeedback(null, HAPTIC_PATTERNS.DELETE)
     showToast({ message: '已删除' })
-  }
+  }).catch(() => {})
   closeActionMenu()
 }
 

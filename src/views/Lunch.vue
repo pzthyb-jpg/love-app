@@ -120,7 +120,7 @@
 </template>
 
 <script setup>
-import { showToast } from 'vant'
+import { showToast, showConfirmDialog } from 'vant'
 import { ref, computed, nextTick } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import LunchWheel from '../components/LunchWheel.vue'
@@ -265,20 +265,24 @@ function handleAddRestaurant() {
 }
 
 function confirmDelete(r) {
-  const result = window.confirm(`确定删除「${r.name}」吗？`)
-  if (result) {
+  showConfirmDialog({
+    title: '确定删除？',
+    message: `确定删除「${r.name}」吗？`
+  }).then(() => {
     removeRestaurant(r.name)
     showToast({ message: `已删除 ${r.name}` })
-  }
+  }).catch(() => {})
 }
 
 function resetAllRestaurants() {
-  const result = window.confirm('重置为默认餐厅列表？自定义餐厅将被清除。')
-  if (result) {
+  showConfirmDialog({
+    title: '重置餐厅列表',
+    message: '重置为默认餐厅列表？自定义餐厅将被清除。'
+  }).then(() => {
     resetRestaurants()
     excludedList.value = []
     showToast({ message: '已重置默认餐厅列表', type: 'success' })
-  }
+  }).catch(() => {})
 }
 
 // 确保至少有 2 家餐厅可转
