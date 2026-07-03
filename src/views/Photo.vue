@@ -14,7 +14,11 @@
     <!-- 拍照区域 -->
     <div class="card camera-card">
       <div class="preview-area" ref="previewRef">
-        <video v-if="cameraState === 'ready'" ref="videoRef" class="video-preview" autoplay playsinline></video>
+        <div v-if="cameraState === 'opening'" class="preview-loading">
+          <div class="loading-spinner"></div>
+          <p>正在打开摄像头...</p>
+        </div>
+        <video v-else-if="cameraState === 'ready'" ref="videoRef" class="video-preview" autoplay playsinline></video>
         <img v-else-if="capturedPhoto" :src="capturedPhoto" class="photo-preview" />
         <div v-else class="preview-placeholder">
           <span class="placeholder-icon">📸</span>
@@ -30,6 +34,13 @@
           @click="openCamera"
         >
           📸 咔嚓拍照
+        </button>
+        <button
+          v-else-if="cameraState === 'opening'"
+          class="btn btn-primary btn-block"
+          disabled
+        >
+          ⏳ 正在打开摄像头...
         </button>
         <button
           v-else-if="cameraState === 'ready'"
@@ -405,6 +416,17 @@ function toggleNotification() {
   notifEnabled.value = !notifEnabled.value
   safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, notifEnabled.value ? 'true' : 'false')
   if (notifEnabled.value) {
+    // 请求通知权限并发送测试通知
+    if ('Notification' in window) {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('💕 小皮爱情助手', {
+            body: '中午打卡提醒已开启，每天都会提醒你哦～',
+            icon: './pwa-192x192.png'
+          })
+        }
+      })
+    }
     scheduleReminder()
   } else {
     cancelReminder()
@@ -539,6 +561,30 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.preview-loading {
+  text-align: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+}
+.preview-loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 107, 157, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.preview-loading p {
+  font-size: var(--font-body-small);
+  color: var(--text-secondary);
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 .preview-placeholder {
   text-align: center;
