@@ -15,7 +15,7 @@
     <div class="card camera-card">
       <div class="preview-area" ref="previewRef">
         <div v-if="cameraState === 'opening'" class="preview-loading">
-          <div class="loading-spinner"></div>
+          <van-loading type="spinner" color="var(--primary)" />
           <p>正在打开摄像头...</p>
         </div>
         <video v-else-if="cameraState === 'ready'" ref="videoRef" class="video-preview" autoplay playsinline></video>
@@ -571,14 +571,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-md);
-}
-.preview-loading .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 107, 157, 0.2);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
 }
 .preview-loading p {
   font-size: var(--font-body-small);
