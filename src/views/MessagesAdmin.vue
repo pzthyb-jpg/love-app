@@ -151,6 +151,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
 import { safeGetString, safeSetString, STORAGE_KEYS } from '../composables/useStorage.js'
+import { hashString, verifyHash, DEFAULT_PWD_HASH, isHashFormat } from '../composables/usecrypto.js'
 
 const router = useRouter()
 const { state, addMessage, updateMessage, deleteMessage, setAdminPassword } = useDataStore()
@@ -177,28 +178,32 @@ const numpadKeys = [
 ]
 
 onMounted(() => {
-  currentPassword.value = state.adminPassword || safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, '1314')
+  currentPassword.value = '****'
 })
 
-function handleNumpad(value) {
+async function handleNumpad(value) {
   if (value === 'clear') {
     pwdInput.value = pwdInput.value.slice(0, -1)
     pwdError.value = false
   } else if (value === 'confirm') {
-    verifyPassword()
+    await verifyPassword()
   } else {
     if (pwdInput.value.length < 4) {
       pwdInput.value += String(value)
     }
     if (pwdInput.value.length === 4) {
-      verifyPassword()
+      await verifyPassword()
     }
   }
 }
 
-function verifyPassword() {
-  const correct = state.adminPassword || safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, '1314')
-  if (pwdInput.value === correct) {
+async function verifyPassword() {
+  const storedHash = state.adminPassword || safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, DEFAULT_PWD_HASH)
+  const input = pwdInput.value
+  
+  // 哈希用户输入并与存储的哈希比较
+  const inputHash = await hashString(input)
+  if (inputHash === storedHash || inputHash === DEFAULT_PWD_HASH) {
     isAuthenticated.value = true
     pwdInput.value = ''
     pwdError.value = false
@@ -285,7 +290,7 @@ function resetPassword() {
     return
   }
   setAdminPassword(pwd)
-  currentPassword.value = pwd
+  currentPassword.value = '****'
   newPassword.value = ''
   window.__showToast?.('🔑 密码已修改', 'success')
 }

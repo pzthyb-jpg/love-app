@@ -8,6 +8,7 @@ import {
   safeSetString,
   savePhoto
 } from '../composables/useStorage.js'
+import { DEFAULT_PWD_HASH, isHashFormat, hashString } from '../composables/usecrypto.js'
 
 // 检查写入结果，失败时弹出 Toast 提示
 function checkWriteResult(success, key) {
@@ -44,8 +45,29 @@ const state = reactive({
   checkinBadges: safeGetJSON(STORAGE_KEYS.CHECKIN_BADGES, []),
   loveAnniversary: safeGetString(STORAGE_KEYS.LOVE_ANNIVERSARY, ''),
   notificationEnabled: safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true',
-  adminPassword: safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, '1314')
+  adminPassword: safeGetPassword()
 })
+
+// 读取密码，自动迁移旧格式（明文 → 哈希）
+function safeGetPassword() {
+  const stored = safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, '')
+  if (!stored) {
+    // 无密码时使用默认哈希
+    return DEFAULT_PWD_HASH
+  }
+  if (isHashFormat(stored)) {
+    return stored
+  }
+  // 旧格式：明文密码，需要迁移
+  // 异步哈希并保存，同步返回默认哈希
+  hashString(stored).then(hash => {
+    safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, hash)
+    state.adminPassword = hash
+  }).catch(() => {
+    // 降级：保留原值
+  })
+  return DEFAULT_PWD_HASH
+}
 
 // 操作函数
 function addCheckin(record) {
@@ -143,8 +165,15 @@ function setNotificationEnabled(enabled) {
 }
 
 function setAdminPassword(password) {
-  state.adminPassword = password
-  safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, password)
+  // 存储前进行哈希（密码被哈希后存入 localStorage）
+  hashString(password).then(hash => {
+    state.adminPassword = hash
+    safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, hash)
+  }).catch(() => {
+    // 降级：如果 SubtleCrypto 不可用，直接存储
+    state.adminPassword = password
+    safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, password)
+  })
 }
 
 export function useDataStore() {
