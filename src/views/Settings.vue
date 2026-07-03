@@ -162,16 +162,12 @@
       </div>
     </Teleport>
 
-    <!-- Toast -->
-    <Teleport to="body">
-      <div v-if="toast" class="toast-fixed" :class="'toast-' + toast.type">
-        {{ toast.message }}
-      </div>
-    </Teleport>
+
   </div>
 </template>
 
 <script setup>
+import { showToast } from 'vant'
 import { ref, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { STORAGE_KEYS, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
@@ -204,18 +200,6 @@ const importInputRef = ref(null)
 // 清除确认
 const showClearConfirm = ref(false)
 
-// Toast
-const toast = ref(null)
-let toastTimer = null
-
-function showToast(message, type = 'info') {
-  clearTimeout(toastTimer)
-  toast.value = { message, type }
-  toastTimer = setTimeout(() => {
-    toast.value = null
-  }, 2500)
-}
-
 // 保存设置
 function saveSettings() {
   safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, anniversary.value)
@@ -233,23 +217,23 @@ onMounted(() => {
 function onDateChange() {
   if (anniversary.value) {
     safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, anniversary.value)
-    window.__showToast?.('🎂 纪念日已更新', 'success')
+    showToast({ message: '🎂 纪念日已更新', type: 'success' })
   }
 }
 
 function onGirlfriendNameBlur() {
   safeSetString(KEY_GIRLFRIEND_NAME, girlfriendName.value)
-  window.__showToast?.('👧 昵称已保存', 'success')
+  showToast({ message: '👧 昵称已保存', type: 'success' })
 }
 
 function onBoyfriendNameBlur() {
   safeSetString(KEY_BOYFRIEND_NAME, boyfriendName.value || '泓博')
-  window.__showToast?.('👦 昵称已保存', 'success')
+  showToast({ message: '👦 昵称已保存', type: 'success' })
 }
 
 function onReminderTimeChange() {
   safeSetString(KEY_REMINDER_TIME, reminderTime.value)
-  window.__showToast?.('🕐 提醒时间已更新', 'success')
+  showToast({ message: '🕐 提醒时间已更新', type: 'success' })
 }
 
 function onCustomTimeChange() {
@@ -259,7 +243,7 @@ function onCustomTimeChange() {
 function toggleNotification() {
   notificationEnabled.value = !notificationEnabled.value
   safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, notificationEnabled.value ? 'true' : 'false')
-  window.__showToast?.(notificationEnabled.value ? '⏰ 提醒已开启' : '⏰ 提醒已关闭', 'info')
+  showToast({ message: notificationEnabled.value ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
 }
 
 // 导出数据
@@ -290,7 +274,7 @@ function exportData() {
   a.download = `love-app-backup-${new Date().toISOString().slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
-  window.__showToast?.('📤 数据已导出', 'success')
+  showToast({ message: '📤 数据已导出', type: 'success' })
 }
 
 // 导入数据
@@ -316,12 +300,12 @@ function importData(e) {
         } catch (e) {}
       })
       // 刷新页面以加载新数据
-      window.__showToast?.('📥 数据已导入，请刷新页面', 'success')
+      showToast({ message: '📥 数据已导入，请刷新页面', type: 'success' })
       setTimeout(() => {
         window.location.reload()
       }, 1500)
     } catch (err) {
-      window.__showToast?.('❌ 导入失败：数据格式不正确', 'error')
+      showToast({ message: '❌ 导入失败：数据格式不正确', type: 'fail' })
     }
   }
   reader.readAsText(file)
@@ -343,7 +327,7 @@ function clearAllData() {
   try { localStorage.removeItem(KEY_CUSTOM_REMINDER_TIME) } catch (e) {}
 
   showClearConfirm.value = false
-  window.__showToast?.('🗑️ 所有数据已清除，即将刷新', 'success')
+  showToast({ message: '🗑️ 所有数据已清除，即将刷新', type: 'success' })
   setTimeout(() => {
     window.location.reload()
   }, 1500)

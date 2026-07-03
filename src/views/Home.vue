@@ -123,6 +123,7 @@
 </template>
 
 <script setup>
+import { showToast } from 'vant'
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
@@ -278,7 +279,7 @@ function saveAnniversary() {
     setAnniversary(anniversaryInput.value)
     showAnniversaryModal.value = false
     anniversarySet.value = true
-    window.__showToast?.('🎉 纪念日设置成功！', 'success')
+    showToast({ message: '🎉 纪念日设置成功！', type: 'success' })
     // 重新触发数字动画
     nextTick(() => {
       if (daysRef.value) {

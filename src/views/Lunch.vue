@@ -120,6 +120,7 @@
 </template>
 
 <script setup>
+import { showToast } from 'vant'
 import { ref, computed, nextTick } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import LunchWheel from '../components/LunchWheel.vue'
@@ -214,7 +215,7 @@ function closeResult() {
 
 function confirmResult() {
   showResult.value = false
-  window.__showToast?.('🎉 去吃 ' + resultRestaurant.value.name + '！', 'success')
+  showToast({ message: '🎉 去吃 ' + resultRestaurant.value.name + '！', type: 'success' })
 }
 
 function spinAgainExclude() {
@@ -252,7 +253,7 @@ function handleAddRestaurant() {
   const name = newRestaurantName.value.trim()
   if (!name) return
   if (state.restaurants.some(r => r.name === name)) {
-    window.__showToast?.('该餐厅已存在', 'error')
+    showToast({ message: '该餐厅已存在', type: 'fail' })
     return
   }
   // 随机选一个 emoji
@@ -260,14 +261,14 @@ function handleAddRestaurant() {
   const emoji = emojis[Math.floor(Math.random() * emojis.length)]
   addRestaurant({ name, emoji, distance: '—', rating: 0, tags: [] })
   newRestaurantName.value = ''
-  window.__showToast?.(`已添加 ${name}`, 'success')
+  showToast({ message: `已添加 ${name}`, type: 'success' })
 }
 
 function confirmDelete(r) {
   const result = window.confirm(`确定删除「${r.name}」吗？`)
   if (result) {
     removeRestaurant(r.name)
-    window.__showToast?.(`已删除 ${r.name}`, 'info')
+    showToast({ message: `已删除 ${r.name}` })
   }
 }
 
@@ -276,7 +277,7 @@ function resetAllRestaurants() {
   if (result) {
     resetRestaurants()
     excludedList.value = []
-    window.__showToast?.('已重置默认餐厅列表', 'success')
+    showToast({ message: '已重置默认餐厅列表', type: 'success' })
   }
 }
 

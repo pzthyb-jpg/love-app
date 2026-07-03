@@ -6,13 +6,11 @@
       </transition>
     </router-view>
     <TabBar />
-    <Toast />
   </div>
 </template>
 
 <script setup>
 import TabBar from './components/TabBar.vue'
-import Toast from './components/Toast.vue'
 </script>
 
 <style>

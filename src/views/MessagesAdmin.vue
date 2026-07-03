@@ -147,6 +147,7 @@
 </template>
 
 <script setup>
+import { showToast } from 'vant'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
@@ -221,7 +222,7 @@ const newMessageCondition = ref('null')
 function handleAddMessage() {
   const text = newMessageText.value.trim()
   if (!text) {
-    window.__showToast?.('请输入留言内容', 'error')
+    showToast({ message: '请输入留言内容', type: 'fail' })
     return
   }
   const msg = {
@@ -237,7 +238,7 @@ function handleAddMessage() {
   newMessageText.value = ''
   newMessageType.value = 'random'
   newMessageCondition.value = 'null'
-  window.__showToast?.('✅ 留言已添加', 'success')
+  showToast({ message: '✅ 留言已添加', type: 'success' })
 }
 
 // 编辑
@@ -256,7 +257,7 @@ function startEdit(msg) {
 function saveEdit(msg) {
   const text = editText.value.trim()
   if (!text) {
-    window.__showToast?.('内容不能为空', 'error')
+    showToast({ message: '内容不能为空', type: 'fail' })
     return
   }
   updateMessage(msg.id, {
@@ -265,7 +266,7 @@ function saveEdit(msg) {
     specialCondition: editCondition.value === 'null' ? null : editCondition.value
   })
   editingId.value = null
-  window.__showToast?.('✅ 留言已更新', 'success')
+  showToast({ message: '✅ 留言已更新', type: 'success' })
 }
 
 function cancelEdit() {
@@ -275,7 +276,7 @@ function cancelEdit() {
 function confirmDeleteMessage(msg) {
   if (window.confirm(`确定删除这条留言吗？\n"${msg.text.slice(0, 30)}..."`)) {
     deleteMessage(msg.id)
-    window.__showToast?.('🗑️ 留言已删除', 'info')
+    showToast({ message: '🗑️ 留言已删除' })
   }
 }
 
@@ -286,13 +287,13 @@ const newPassword = ref('')
 function resetPassword() {
   const pwd = newPassword.value.trim()
   if (!/^\d{4}$/.test(pwd)) {
-    window.__showToast?.('密码必须是4位数字', 'error')
+    showToast({ message: '密码必须是4位数字', type: 'fail' })
     return
   }
   setAdminPassword(pwd)
   currentPassword.value = '****'
   newPassword.value = ''
-  window.__showToast?.('🔑 密码已修改', 'success')
+  showToast({ message: '🔑 密码已修改', type: 'success' })
 }
 
 // 排序（按创建时间倒序）

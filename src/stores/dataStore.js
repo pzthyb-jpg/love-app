@@ -1,4 +1,5 @@
 // dataStore.js — 响应式数据层
+import { showToast } from 'vant'
 import { reactive, toRefs } from 'vue'
 import {
   STORAGE_KEYS,
@@ -13,7 +14,7 @@ import { DEFAULT_PWD_HASH, isHashFormat, hashString } from '../composables/usecr
 // 检查写入结果，失败时弹出 Toast 提示
 function checkWriteResult(success, key) {
   if (!success) {
-    window.__showToast?.(`💾 写入 ${STORAGE_KEYS[key] || key} 失败，存储空间可能已满`, 'error')
+    showToast({ message: `💾 写入 ${STORAGE_KEYS[key] || key} 失败，存储空间可能已满`, type: 'fail' })
   }
   return success
 }

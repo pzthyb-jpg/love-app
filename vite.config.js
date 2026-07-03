@@ -1,12 +1,16 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import Components from 'unplugin-vue-components/vite'
+import { VantResolver } from 'unplugin-vue-components/resolvers'
 
-// https://vite.dev/config/
 export default defineConfig({
   base: './',
   plugins: [
     vue(),
+    Components({
+      resolvers: [VantResolver()]
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico'],
@@ -14,8 +18,8 @@ export default defineConfig({
         name: '小皮爱情助手',
         short_name: '小皮助手',
         description: '宝贝专属甜蜜空间 💕',
-        theme_color: '#FF6B9D',
-        background_color: '#FFF0F3',
+        theme_color: '#E8758A',
+        background_color: '#F5F5F7',
         display: 'standalone',
         orientation: 'portrait',
         scope: './',

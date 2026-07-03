@@ -189,6 +189,7 @@
 </template>
 
 <script setup>
+import { showToast } from 'vant'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { getTodayStr, formatDate, calculateStreak, checkMilestone, getNextMilestone, BADGE_DEFINITIONS } from '../composables/useStreak.js'
@@ -308,7 +309,7 @@ async function openCamera() {
     }
     cameraState.value = 'ready'
   } catch (e) {
-    window.__showToast?.('😢 无法打开摄像头，请检查权限设置', 'error')
+    showToast({ message: '😢 无法打开摄像头，请检查权限设置', type: 'fail' })
     cameraState.value = 'idle'
   }
 }
@@ -376,7 +377,7 @@ function confirmPhoto() {
   // 关闭摄像头
   stopCamera()
   
-  window.__showToast?.('🎉 打卡成功！', 'success')
+  showToast({ message: '🎉 打卡成功！', type: 'success' })
 }
 
 // 关闭摄像头
@@ -431,7 +432,7 @@ function toggleNotification() {
   } else {
     cancelReminder()
   }
-  window.__showToast?.(notifEnabled.value ? '⏰ 提醒已开启' : '⏰ 提醒已关闭', 'info')
+  showToast({ message: notifEnabled.value ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
 }
 
 // ===== 提醒调度 =====
@@ -483,7 +484,7 @@ function scheduleReminder() {
       })
     }
     // 即使通知被拒绝，也内部提醒（通过 Toast）
-    window.__showToast?.('📸 该拍照打卡啦！', 'info')
+    showToast({ message: '📸 该拍照打卡啦！' })
     // 安排明天的提醒
     scheduleReminder()
   }, msUntilTarget)
@@ -503,14 +504,14 @@ function onReminderTimeChange() {
   if (selectedReminderTime.value !== 'custom') {
     safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
     scheduleReminder()
-    window.__showToast?.('🕐 提醒时间已更新', 'success')
+    showToast({ message: '🕐 提醒时间已更新', type: 'success' })
   }
 }
 
 function onCustomTimeChange() {
   safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
   scheduleReminder()
-  window.__showToast?.('🕐 提醒时间已更新', 'success')
+  showToast({ message: '🕐 提醒时间已更新', type: 'success' })
 }
 
 // 安全读取辅助（已从 useStorage 导入 safeGetString/safeSetString）

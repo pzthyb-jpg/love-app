@@ -160,6 +160,7 @@
 </template>
 
 <script setup>
+import { showToast } from 'vant'
 import { ref, computed } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { getTodaysMessage, formatMessageText } from '../composables/useMessages.js'
@@ -262,7 +263,7 @@ function submitEntry(type) {
   addWish(wish)
   inputText.value = ''
   hapticFeedback(null, HAPTIC_PATTERNS.SUBMIT)
-  window.__showToast?.(type === 'wish' ? '✨ 愿望已许下！' : '😤 吐槽已记录！', 'success')
+  showToast({ message: type === 'wish' ? '✨ 愿望已许下！' : '😤 吐槽已记录！', type: 'success' })
 }
 
 // 长按检测
@@ -302,7 +303,7 @@ function markAsFulfilled() {
     fulfilledBy: name
   })
   hapticFeedback(null, HAPTIC_PATTERNS.ACHIEVEMENT)
-  window.__showToast?.('🎉 愿望已标记为实现！', 'success')
+  showToast({ message: '🎉 愿望已标记为实现！', type: 'success' })
   closeActionMenu()
 }
 
@@ -311,7 +312,7 @@ function confirmDelete() {
   if (window.confirm('确定删除这条内容吗？')) {
     deleteWish(selectedWish.value.id)
     hapticFeedback(null, HAPTIC_PATTERNS.DELETE)
-    window.__showToast?.('已删除', 'info')
+    showToast({ message: '已删除' })
   }
   closeActionMenu()
 }
@@ -330,7 +331,7 @@ function exportData() {
   a.download = `愿望池备份_${getTodayStr()}.json`
   a.click()
   URL.revokeObjectURL(url)
-  window.__showToast?.('💾 备份文件已下载', 'success')
+  showToast({ message: '💾 备份文件已下载', type: 'success' })
 }
 
 function triggerImport() {
@@ -346,20 +347,20 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result)
       if (!data.version || !data.wishes) {
-        window.__showToast?.('⚠️ 格式不正确，导入失败', 'error')
+        showToast({ message: '⚠️ 格式不正确，导入失败', type: 'fail' })
         return
       }
       // 合并导入
       const existingIds = new Set(state.wishes.map(w => w.id))
       const newWishes = data.wishes.filter(w => !existingIds.has(w.id))
       if (newWishes.length === 0) {
-        window.__showToast?.('没有新的内容可导入', 'info')
+        showToast({ message: '没有新的内容可导入' })
         return
       }
       newWishes.forEach(w => addWish(w))
-      window.__showToast?.(`📥 成功导入 ${newWishes.length} 条内容`, 'success')
+      showToast({ message: `📥 成功导入 ${newWishes.length} 条内容`, type: 'success' })
     } catch (err) {
-      window.__showToast?.('⚠️ 文件解析失败', 'error')
+      showToast({ message: '⚠️ 文件解析失败', type: 'fail' })
     }
   }
   reader.readAsText(file)
