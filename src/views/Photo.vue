@@ -153,15 +153,15 @@
     <Teleport to="body">
       <div v-if="galleryOpen" class="gallery-overlay" @click.self="closeGallery">
         <div class="gallery-close" @click="closeGallery">✕</div>
-        <div class="gallery-scroll" ref="galleryScrollRef">
-          <div v-for="(item, idx) in galleryPhotos" :key="idx" class="gallery-slide">
+        <van-swipe ref="gallerySwipeRef" :loop="false" :show-indicators="true" class="gallery-swipe">
+          <van-swipe-item v-for="(item, idx) in galleryPhotos" :key="idx" class="gallery-slide">
             <img :src="item.photo" :alt="item.date" />
             <div class="gallery-info">
               <p>{{ item.date }}</p>
               <p>{{ item.compliment }}</p>
             </div>
-          </div>
-        </div>
+          </van-swipe-item>
+        </van-swipe>
       </div>
     </Teleport>
 
@@ -192,7 +192,7 @@ const { state, addCheckin, updateStreak, addBadge } = useDataStore()
 
 const videoRef = ref(null)
 const previewRef = ref(null)
-const galleryScrollRef = ref(null)
+const gallerySwipeRef = ref(null)
 
 // 摄像头状态
 const cameraState = ref('idle')  // idle | opening | ready | captured
@@ -389,9 +389,8 @@ function openGallery(index) {
   }))
   galleryOpen.value = true
   nextTick(() => {
-    if (galleryScrollRef.value) {
-      const scrollWidth = window.innerWidth
-      galleryScrollRef.value.scrollLeft = index * scrollWidth
+    if (gallerySwipeRef.value) {
+      gallerySwipeRef.value.swipeTo(index)
     }
   })
 }
@@ -710,6 +709,68 @@ onUnmounted(() => {
 }
 .notification-toggle span {
   font-size: var(--font-body);
+}
+
+/* 全屏画廊 */
+.gallery-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-close {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--space-md));
+  right: var(--space-lg);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-size: 18px;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.gallery-swipe {
+  width: 100%;
+  height: 80vh;
+}
+
+.gallery-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-slide img {
+  max-width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.gallery-info {
+  text-align: center;
+  margin-top: var(--space-lg);
+  color: rgba(255,255,255,0.8);
+}
+
+.gallery-info p {
+  font-size: var(--font-body);
+  line-height: 1.5;
 }
 
 /* 庆祝弹窗 */
