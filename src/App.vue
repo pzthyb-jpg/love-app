@@ -5,12 +5,16 @@
         <component :is="Component" />
       </transition>
     </router-view>
-    <TabBar />
+    <van-tabbar route>
+      <van-tabbar-item to="/" icon="home-o">首页</van-tabbar-item>
+      <van-tabbar-item to="/photo" icon="photograph">拍照</van-tabbar-item>
+      <van-tabbar-item to="/lunch" icon="bag-1">午餐</van-tabbar-item>
+      <van-tabbar-item to="/wish" icon="star-o">愿望</van-tabbar-item>
+    </van-tabbar>
   </div>
 </template>
 
 <script setup>
-import TabBar from './components/TabBar.vue'
 </script>
 
 <style>
