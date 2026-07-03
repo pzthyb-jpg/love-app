@@ -1415,3 +1415,26 @@ textarea.input {
     justify-content: center;
   }
 }
+/* === 留言管理模块 === */
+.msg-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--color-bg);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.pwd-dot {
+  transition: all 0.2s ease;
+}
+
+.pwd-key {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.pwd-key:active {
+  background: var(--color-bg) !important;
+  transform: scale(0.92);
+}

@@ -230,36 +230,16 @@ const AppStore = {
     return AppUtils.safeSetJSON(this.KEYS.MESSAGES, messages);
   },
 
-  /** 获取今天的留言 */
+  /** 获取今天的留言（委托给 MessagesModule，以支持条件匹配和 retry 安全阀） */
   getTodaysMessage() {
+    // 优先使用 MessagesModule 的增强版匹配逻辑
+    if (typeof MessagesModule !== 'undefined' && MessagesModule.getMessages().length > 0) {
+      return MessagesModule.getTodaysMessage();
+    }
+    // 降级：老版简单匹配
     const messages = this.getMessages();
-    const today = AppUtils.getToday();
-    const dayOfWeek = new Date().getDay(); // 0=周日, 1=周一...
-
-    // 按优先级匹配留言
-    // 1. 精确匹配今天日期
-    // 2. 匹配星期（如每周一）
-    // 3. 无条件留言（没有日期/星期限制）
-
-    // 精确日期匹配
-    const dateMatch = messages.filter(m => m.date === today);
-    if (dateMatch.length > 0) {
-      return dateMatch[Math.floor(Math.random() * dateMatch.length)];
-    }
-
-    // 星期匹配
-    const dayMatch = messages.filter(m => m.condition === 'weekly' && m.dayOfWeek === dayOfWeek);
-    if (dayMatch.length > 0) {
-      return dayMatch[Math.floor(Math.random() * dayMatch.length)];
-    }
-
-    // 无条件
-    const unconditional = messages.filter(m => !m.date && !m.condition);
-    if (unconditional.length > 0) {
-      return unconditional[Math.floor(Math.random() * unconditional.length)];
-    }
-
-    return null;
+    if (!messages.length) return null;
+    return messages[Math.floor(Math.random() * messages.length)];
   },
 
   // ===== 首页数据聚合 =====

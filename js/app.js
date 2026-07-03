@@ -32,6 +32,9 @@
       // 更新 subtitle
       this.updateSubtitle();
 
+      // 标题连击 5 次 → 留言管理后台
+      this.setupTitleTap();
+
       console.log('💕 小皮爱情助手 v2.0 已启动！');
     },
 
@@ -234,6 +237,28 @@
           }
         });
       }
+    },
+
+    /** 标题连击 5 次 → 留言管理后台 */
+    setupTitleTap() {
+      const title = document.querySelector('.app-header h1');
+      if (!title) return;
+      let tapCount = 0;
+      let tapTimer = null;
+
+      title.addEventListener('click', () => {
+        tapCount++;
+        if (tapTimer) clearTimeout(tapTimer);
+        tapTimer = setTimeout(() => { tapCount = 0; }, 800);
+
+        if (tapCount >= 5) {
+          tapCount = 0;
+          AppUtils.hapticFeedback([10, 50, 10]);
+          if (typeof MessagesModule !== 'undefined') {
+            MessagesModule.openAdmin();
+          }
+        }
+      });
     }
   };
 
