@@ -8,6 +8,7 @@
         <span class="deco-dot"></span>
       </div>
       <h1 class="home-title" @click="handleTitleClick">💕 小皮爱情助手</h1>
+      <span class="settings-icon" @click="goToSettings">⚙️</span>
       <p class="home-subtitle">宝贝专属的甜蜜空间❤️</p>
     </div>
 
@@ -251,6 +252,10 @@ function goToTab(index) {
   router.push(paths[index])
 }
 
+function goToSettings() {
+  router.push('/settings')
+}
+
 function handleTitleClick() {
   titleClickCount++
   clearTimeout(titleClickTimer)
@@ -292,6 +297,7 @@ function saveAnniversary() {
 .home-header {
   text-align: center;
   margin-bottom: var(--space-xl);
+  position: relative;
 }
 .home-title {
   font-size: var(--font-h1);
@@ -301,6 +307,19 @@ function saveAnniversary() {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   cursor: default;
+}
+.settings-icon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 22px;
+  cursor: pointer;
+  padding: var(--space-xs);
+  transition: transform var(--transition-fast);
+  z-index: 10;
+}
+.settings-icon:active {
+  transform: scale(0.85);
 }
 .home-subtitle {
   font-size: var(--font-body-small);

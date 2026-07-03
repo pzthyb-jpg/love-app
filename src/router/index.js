@@ -30,6 +30,12 @@ const routes = [
     name: 'MessagesAdmin',
     component: () => import('../views/MessagesAdmin.vue'),
     meta: { title: '留言管理', hidden: true }
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/Settings.vue'),
+    meta: { title: '设置', icon: '⚙️', hidden: true }
   }
 ]
 
