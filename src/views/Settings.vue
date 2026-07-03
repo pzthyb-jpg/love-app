@@ -17,10 +17,24 @@
           </div>
         </div>
         <div class="setting-action">
-          <input type="date" v-model="anniversary" class="input date-input" @change="onDateChange" />
+          <span class="date-display" @click="showDatePicker = true">{{ anniversary || '选择日期' }}</span>
         </div>
       </div>
     </div>
+
+    <!-- 日期选择弹窗 -->
+    <Teleport to="body">
+      <van-popup v-model:show="showDatePicker" position="bottom" round>
+        <van-date-picker
+          v-model="selectedDate"
+          title="选择纪念日"
+          :min-date="minDate"
+          :max-date="new Date()"
+          @confirm="onDateConfirm"
+          @cancel="showDatePicker = false"
+        />
+      </van-popup>
+    </Teleport>
 
     <!-- 昵称设置 -->
     <div class="card settings-card">
@@ -165,6 +179,20 @@ const KEY_CUSTOM_REMINDER_TIME = 'custom_reminder_time'
 // 纪念日
 const anniversary = ref(state.loveAnniversary || '')
 
+// 日期选择器
+const showDatePicker = ref(false)
+const selectedDate = ref([])
+const minDate = new Date(2010, 0, 1)
+
+function onDateConfirm({ selectedValues }) {
+  const [year, month, day] = selectedValues
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  anniversary.value = dateStr
+  safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, dateStr)
+  showDatePicker.value = false
+  showToast({ message: '🎂 纪念日已更新', type: 'success' })
+}
+
 // 昵称
 const girlfriendName = ref(safeGetString(KEY_GIRLFRIEND_NAME, ''))
 const boyfriendName = ref(safeGetString(KEY_BOYFRIEND_NAME, '泓博'))
@@ -192,13 +220,6 @@ function saveSettings() {
 onMounted(() => {
   // 使用 watch 的简单替代：保存按钮无需手动触发，通过 blur/change 事件
 })
-
-function onDateChange() {
-  if (anniversary.value) {
-    safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, anniversary.value)
-    showToast({ message: '🎂 纪念日已更新', type: 'success' })
-  }
-}
 
 function onGirlfriendNameBlur() {
   safeSetString(KEY_GIRLFRIEND_NAME, girlfriendName.value)
