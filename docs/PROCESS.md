@@ -170,5 +170,42 @@
 
 ---
 
+## 六、容错与断点续跑协议
+
+### 6.1 状态追踪文件
+
+**`CHECKPOINT.md`** 是单文件真相源，记录了：
+- 整体流水线进度百分比
+- 每个阶段的完成情况
+- 每个代码步骤的完成状态 + commit hash
+- 下一步该做什么
+
+### 6.2 重启恢复流程
+
+当中断后重新打开会话：
+
+```
+Step 1: 读取 memory → 找到 CHECKPOINT.md 路径
+Step 2: 读取 CHECKPOINT.md → 确认当前进度
+Step 3: 读取 git log → 确认最新 commit
+Step 4: 根据 CHECKPOINT.md 的「下一步动作」继续
+```
+
+### 6.3 状态更新规则
+
+- 每完成一个步骤 → 更新 CHECKPOINT.md 并 git commit
+- 每次 dispatch 子代理 → 在 CHECKPOINT.md 标记 "进行中"
+- 每次子代理返回 → 更新对应步骤为 "已完成" + 记录 commit hash
+- 中断恢复时 → 先读 CHECKPOINT.md，再读 git log 交叉验证
+
+### 6.4 冲突处理
+
+如果两个子代理同时工作导致冲突：
+1. 以最新 commit 的版本为准
+2. 有冲突的文件，取后提交的版本
+3. 更新 CHECKPOINT.md 标记冲突文件需重新审核
+
+---
+
 > 本文档由 Hermes Agent 自动生成
 > 基于：小皮爱情助手 v2.0 迭代过程
