@@ -507,11 +507,8 @@ function onCustomTimeChange() {
 // 安全读取辅助（已从 useStorage 导入 safeGetString/safeSetString）
 // 保留内联版本作为兼容兜底
 onMounted(() => {
-  // 请求通知权限
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission()
-  }
-  // 如果提醒开启，调度定时器
+  // 不自动请求通知权限 — 由用户操作触发（onToggleNotification）
+  // 仅读取通知状态，如果已开启则调度定时器
   if (notifEnabled.value) {
     scheduleReminder()
   }
