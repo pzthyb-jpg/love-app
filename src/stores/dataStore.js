@@ -148,6 +148,11 @@ function setAdminPassword(password) {
 }
 
 export function useDataStore() {
+  // 注册同步函数，供 autoCleanupStorage 清理后同步 state
+  window.__syncCheckinHistory = (cleaned) => {
+    state.checkinHistory = cleaned
+  }
+
   return {
     state,
     addCheckin,

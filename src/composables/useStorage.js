@@ -54,10 +54,17 @@ function autoCleanupStorage() {
     if (history.length > 7) {
       const cleaned = history.slice(-7)
       localStorage.setItem(STORAGE_KEYS.CHECKIN_HISTORY, JSON.stringify(cleaned))
+      // 同步响应式 state，确保 UI 立即反映清理后的数据
+      if (window.__syncCheckinHistory) {
+        window.__syncCheckinHistory(cleaned)
+      }
     }
   } catch (e) {
     try {
       localStorage.removeItem(STORAGE_KEYS.CHECKIN_HISTORY)
+      if (window.__syncCheckinHistory) {
+        window.__syncCheckinHistory([])
+      }
     } catch (e2) {}
   }
 }
