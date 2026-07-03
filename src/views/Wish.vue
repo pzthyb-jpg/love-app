@@ -42,17 +42,12 @@
     </div>
 
     <!-- 筛选栏 -->
-    <div class="filter-tabs">
-      <button
-        v-for="tab in filterTabs"
-        :key="tab.key"
-        class="filter-tab"
-        :class="{ active: activeFilter === tab.key }"
-        @click="activeFilter = tab.key"
-      >
-        {{ tab.label }}
-      </button>
-    </div>
+    <van-tabs v-model:active="activeFilter" type="card" class="filter-tabs" color="var(--primary)" background="transparent">
+      <van-tab title="🌊 全部" name="all" />
+      <van-tab title="✨ 愿望" name="wish" />
+      <van-tab title="😤 吐槽" name="vent" />
+      <van-tab title="✅ 已实现" name="fulfilled" />
+    </van-tabs>
 
     <!-- 气泡展示区 -->
     <div class="bubble-area" ref="bubbleAreaRef">
@@ -181,13 +176,6 @@ const bubbleAreaRef = ref(null)
 
 let longPressTimer = null
 let isLongPress = false
-
-const filterTabs = [
-  { key: 'all', label: '🌊 全部' },
-  { key: 'wish', label: '✨ 愿望' },
-  { key: 'vent', label: '😤 吐槽' },
-  { key: 'fulfilled', label: '✅ 已实现' }
-]
 
 // 所有留言（用于弹窗）
 const allMessages = computed(() => {
@@ -453,34 +441,41 @@ function importData(event) {
   color: white;
 }
 
-/* 筛选栏 */
+/* 筛选栏 - Vant Tabs Card 风格 */
 .filter-tabs {
-  display: flex;
-  gap: var(--space-sm);
   margin-bottom: var(--space-lg);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+}
+
+/* 将 Card 类型 tabs 覆盖为圆角胶囊 */
+.filter-tabs {
+  --van-tabs-card-height: 36px;
+}
+
+.filter-tabs :deep(.van-tabs__nav--card) {
+  border: none;
+  gap: var(--space-sm);
   padding: 2px;
 }
 
-.filter-tab {
-  flex-shrink: 0;
-  padding: var(--space-xs) var(--space-md);
+.filter-tabs :deep(.van-tab--card) {
   border-radius: var(--radius-round);
   border: 1.5px solid var(--border);
-  background: var(--cream);
   font-size: var(--font-body-small);
   font-weight: 500;
   color: var(--text-secondary);
-  cursor: pointer;
+  background: var(--cream);
+  padding: 0 var(--space-md);
   transition: all var(--transition-fast);
-  white-space: nowrap;
 }
 
-.filter-tab.active {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
+.filter-tabs :deep(.van-tab--card.van-tab--active) {
+  background: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+}
+
+.filter-tabs :deep(.van-tabs__wrap) {
+  overflow: visible;
 }
 
 /* 气泡展示区 */
