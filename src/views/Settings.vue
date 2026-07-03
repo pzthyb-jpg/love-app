@@ -33,7 +33,7 @@
           </div>
         </div>
         <div class="setting-action">
-          <input type="text" v-model="girlfriendName" class="input text-input" placeholder="输入昵称…" maxlength="20" @blur="onGirlfriendNameBlur" />
+          <van-field v-model="girlfriendName" placeholder="输入昵称…" maxlength="20" @blur="onGirlfriendNameBlur" style="width:120px" />
         </div>
       </div>
       <div class="setting-divider"></div>
@@ -46,7 +46,7 @@
           </div>
         </div>
         <div class="setting-action">
-          <input type="text" v-model="boyfriendName" class="input text-input" placeholder="输入昵称…" maxlength="20" @blur="onBoyfriendNameBlur" />
+          <van-field v-model="boyfriendName" placeholder="输入昵称…" maxlength="20" @blur="onBoyfriendNameBlur" style="width:120px" />
         </div>
       </div>
     </div>

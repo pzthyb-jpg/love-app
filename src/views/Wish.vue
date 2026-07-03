@@ -20,15 +20,16 @@
 
     <!-- 输入区域 -->
     <div class="card input-card">
-      <textarea
+      <van-field
         v-model="inputText"
-        class="input wish-input"
+        type="textarea"
         placeholder="写下你的愿望或吐槽吧..."
         maxlength="200"
         rows="3"
-      ></textarea>
+        :autosize="{ maxHeight: 120 }"
+        show-word-limit
+      />
       <div class="input-footer">
-        <span class="char-count">{{ inputText.length }}/200</span>
         <div class="input-buttons">
           <van-button type="default" size="small" @click="submitWish" :disabled="!inputText.trim()">
             ✨ 许愿

@@ -35,13 +35,14 @@
         <h3 class="card-title">📝 新建留言</h3>
         <div class="form-group">
           <label class="form-label">内容</label>
-          <textarea
+          <van-field
             v-model="newMessageText"
-            class="input"
+            type="textarea"
             placeholder="输入留言内容，支持 {{days}} 模板变量"
             maxlength="500"
             rows="3"
-          ></textarea>
+            :autosize="{ maxHeight: 150 }"
+          />
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -83,7 +84,7 @@
           >
             <template v-if="editingId === msg.id">
               <div class="edit-form">
-                <textarea v-model="editText" class="input" rows="2" maxlength="500"></textarea>
+                <van-field v-model="editText" type="textarea" rows="2" maxlength="500" :autosize="{ maxHeight: 100 }" />
                 <div class="edit-row">
                   <select v-model="editType" class="input">
                     <option value="morning">🌅 早安</option>
@@ -132,7 +133,7 @@
         <div v-show="showResetPwd" class="reset-pwd-form">
           <p class="form-hint">当前密码：{{ currentPassword }}</p>
           <div class="reset-row">
-            <input v-model="newPassword" class="input" placeholder="输入新4位密码" maxlength="4" type="password" pattern="[0-9]*" />
+            <van-field v-model="newPassword" placeholder="输入新4位密码" maxlength="4" type="password" style="flex:1" />
             <van-button type="primary" size="small" @click="resetPassword">修改</van-button>
           </div>
         </div>
