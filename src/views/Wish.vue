@@ -129,29 +129,15 @@
       </div>
     </Teleport>
 
-    <!-- 操作菜单弹窗 -->
-    <Teleport to="body">
-      <div v-if="showActionMenu" class="dialog-overlay" @click.self="closeActionMenu">
-        <div class="dialog-box action-menu">
-          <h3>操作</h3>
-          <div class="action-list">
-            <button
-              v-if="selectedWish && !selectedWish.fulfilled"
-              class="action-btn"
-              @click="markAsFulfilled"
-            >
-              ✅ 标记已实现
-            </button>
-            <button class="action-btn action-danger" @click="confirmDelete">
-              🗑️ 删除
-            </button>
-            <button class="action-btn action-cancel" @click="closeActionMenu">
-              取消
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- 操作菜单 - Vant ActionSheet -->
+    <van-action-sheet
+      v-model:show="showActionMenu"
+      :actions="actionSheetActions"
+      @select="onActionSelect"
+      @cancel="closeActionMenu"
+      close-on-click-action
+      cancel-text="取消"
+    />
   </div>
 </template>
 
@@ -214,6 +200,24 @@ const filteredWishes = computed(() => {
   }
   return list
 })
+
+// 操作菜单选项
+const actionSheetActions = computed(() => {
+  const actions = []
+  if (selectedWish.value && !selectedWish.value.fulfilled) {
+    actions.push({ name: '✅ 标记已实现', value: 'fulfill' })
+  }
+  actions.push({ name: '🗑️ 删除', value: 'delete', color: '#D63B5F' })
+  return actions
+})
+
+function onActionSelect(action) {
+  if (action.value === 'fulfill') {
+    markAsFulfilled()
+  } else if (action.value === 'delete') {
+    confirmDelete()
+  }
+}
 
 function typeLabel(type) {
   const labels = {
@@ -280,7 +284,6 @@ function onBubbleClick(wish) {
 }
 
 function closeActionMenu() {
-  showActionMenu.value = false
   selectedWish.value = null
 }
 
@@ -640,44 +643,6 @@ function importData(event) {
 
 .message-author {
   font-size: var(--font-caption);
-  color: var(--text-secondary);
-}
-
-/* 操作菜单 */
-.action-menu {
-  padding: var(--space-xl);
-}
-
-.action-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.action-btn {
-  display: block;
-  width: 100%;
-  padding: var(--space-md) var(--space-lg);
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--warm-pink);
-  font-size: var(--font-body);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.action-btn:active {
-  background: var(--peach);
-}
-
-.action-danger {
-  color: #D63B5F;
-}
-
-.action-cancel {
-  background: var(--cream);
-  border: 1px solid var(--border);
   color: var(--text-secondary);
 }
 
