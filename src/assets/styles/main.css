@@ -51,6 +51,25 @@
   --space-2xl: 32px;
   --space-3xl: 48px;
   
+  /* 字体变量（Apple HIG 层级） */
+  --font-h1: 22px;
+  --font-h2: 17px;
+  --font-h3: 15px;
+  --font-body: 15px;
+  --font-body-small: 13px;
+  --font-caption: 12px;
+  --font-badge: 11px;
+  
+  /* 过渡变量 */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.35s ease;
+  
+  /* 辅助色 */
+  --warm-pink: #FDF2F4;
+  --cream: #FAFAFA;
+  --peach: #FDE8E8;
+  --coral: #FB7185;
+  
   /* 安全区域 */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);

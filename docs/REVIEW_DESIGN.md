@@ -830,3 +830,241 @@ src/
 
 *本审核报告由审核/质量智能体自动生成*
 *审核日期：2026-07-03*
+---
+
+## 阶段四：Vant 4 替换审核
+
+> 基于 `/Users/wanghongbo/love-app/src/` 完整源码头审查
+> 审核日期：2026-07-03
+> 审核范围：Vant 4 全部替换完成后的 5 维度全面审查
+
+---
+
+### 一、Vant 替换正确性
+
+#### 1.1 Vant 组件使用
+
+| Vant 组件 | 使用文件 | 方式 | 正确 |
+|-----------|---------|------|------|
+| van-button | Home/Photo/Wish/Lunch/MessagesAdmin | 标签 + type/size/block/plain | Yes |
+| van-tabbar + van-tabbar-item | App.vue | 标签 + route 模式 | Yes |
+| van-swipe + van-swipe-item | Photo.vue（全屏画廊） | 标签 + ref.swipeTo() | Yes |
+| van-tabs + van-tab card | Wish.vue（筛选栏） | 标签 + v-model:active + :deep() | Yes |
+| van-action-sheet | Wish.vue（长按操作菜单） | 标签 + actions 数组 + @select | Yes |
+| van-collapse + van-collapse-item accordion | Lunch.vue（餐厅管理） | 标签 + v-model 字符串 | Yes |
+| van-field | Wish/MessagesAdmin/Settings | 标签 + v-model + maxlength | Yes |
+| van-switch | Photo/Settings | 标签 + v-model + @change | Yes |
+| van-date-picker | Settings（纪念日选择） | 标签 + @confirm/@cancel | Yes |
+| van-popup | Settings（弹窗容器） | 标签 + v-model:show | Yes |
+| van-loading | Photo（摄像头加载中） | 标签 + type=spinner | Yes |
+
+#### 1.2 Vant API 函数
+
+| API | 使用文件 | 正确 |
+|-----|---------|------|
+| showToast | Home/Photo/Wish/Lunch/MessagesAdmin/Settings + dataStore.js | Yes |
+| showConfirmDialog | Wish/Lunch/MessagesAdmin/Settings | Yes Promise |
+
+#### 1.3 旧组件清理
+
+| 旧组件 | 状态 |
+|--------|------|
+| src/components/Toast.vue | 已删除（被 showToast 替代）|
+| src/components/ConfirmDialog.vue | 已删除（被 showConfirmDialog 替代）|
+| src/components/TabBar.vue | 已删除（被 van-tabbar 替代）|
+
+#### 1.4 保留手写
+
+| 组件 | 原因 |
+|------|------|
+| LunchWheel.vue | Canvas 转盘，Vant 无对应组件 |
+
+**评价**：替换正确性高，所有核心功能正确使用 Vant 组件和 API，旧组件全部删除，构建通过。
+
+---
+
+### 二、设计一致性
+
+#### 2.1 新设计系统应用
+
+| 元素 | 旧值 | 新值 (main.css) | 状态 |
+|------|------|----------------|------|
+| --primary | #FF6B9D | #E8758A | Yes |
+| --bg | #FFF0F3 | #F5F5F7 | Yes |
+| --bg-card | #FFFBF5 | #FFFFFF | Yes |
+| --text | #2D2D2D | #1D1D1F | Yes |
+| --text-secondary | #9CA3AF | #86868B | Yes |
+| --border | #F3E8F0 | #E5E5EA | Yes |
+| 阴影 | 粉色阴影 | 中性灰度阴影 | Yes |
+| Vant 主题覆盖 | - | --van-primary: #E8758A 等 20+ 变量 | Yes |
+
+#### 2.2 缺失的 CSS 变量（P1）
+
+以下变量在 `<style scoped>` 中被引用但从未在 `main.css :root` 定义，var() 解析失败导致属性静默回退默认值。
+
+**字体变量**（影响所有页面）：--font-h1（1 处）、--font-h2（3 处）、--font-h3（8 处）、--font-body（14 处）、--font-body-small（18 处）、--font-caption（20 处）、--font-badge（3 处）
+
+**过渡变量**（影响所有交互）：--transition-fast（16 处）、--transition-normal（2 处）
+
+**辅助色**（影响背景/边框颜色）：--warm-pink（15+ 引用）、--cream（5+）、--peach（3）、--coral（3）、--gold（应映射 --achieve）、--purple（应映射 --wish）、--mint（应映射 --done）
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: src/assets/styles/main.css
+[FEEDBACK] problem: main.css :root 缺失字体(7)、过渡(2)、辅助色(4)共13个CSS变量，被6个视图文件引用80+处
+[FEEDBACK] solution: 补充字体变量、过渡变量、辅助色变量
+```
+
+#### 2.3 残留旧颜色
+
+| 编号 | 位置 | 旧颜色 | 严重程度 |
+|------|------|--------|----------|
+| OL-01 | index.html:6 theme-color | #FFF0F3 | P1 |
+| OL-02 | index.html:17-18 splash 背景 | #FFF0F3 | P1 |
+| OL-03 | index.html:21 splash 文字 | #9CA3AF | P2 |
+| OL-04 | Photo.vue:548 预览区边框 | rgba(255,107,157,0.15) | P2 |
+| OL-05 | LunchWheel.vue:299 指针阴影 | rgba(255,107,157,0.4) | P2 |
+| OL-06 | LunchWheel.vue Canvas 色板 | #FF6B9D | P2 |
+
+---
+
+### 三、代码质量
+
+| 检查项 | 结果 |
+|--------|------|
+| console.log | 未发现 |
+| v-html/innerHTML | 未发现 |
+| TODO/FIXME 注释 | Photo.vue:507-508 -- P2 |
+| console.warn/console.error | useStorage.js（异常调试，可接受）|
+| 旧组件残留 | 全部删除 |
+| window.__syncCheckinHistory | 全局模式 -- P2 |
+
+#### 组件大小
+
+| 文件 | 行数 | 评估 |
+|------|------|------|
+| Photo.vue | 860 | P1 建议拆分（6 功能区）|
+| Wish.vue | 667 | P1 建议拆分（6 功能区）|
+| Settings.vue | 525 | P2 略超上限 |
+| MessagesAdmin.vue | 578 | P2 略超上限 |
+| Home.vue | 561 | P2 略超上限 |
+| Lunch.vue | 491 | 正常 |
+| LunchWheel.vue | ~360 | 正常 |
+
+#### 未使用的 import
+
+| 文件 | import | 严重程度 |
+|------|--------|----------|
+| Settings.vue | safeGetJSON/safeSetJSON | P2 |
+
+---
+
+### 四、安全审查
+
+| 规则 | 状态 |
+|------|------|
+| 密码哈希存储 | Yes SHA-256 (Web Crypto API) |
+| 禁止 v-html | Yes 零结果 |
+| {{ }} 渲染输入 | Yes Vue 自动转义 |
+| 权限用户操作时请求 | P1 -- Photo.vue:511 onMounted 非用户操作请求 |
+| 输入长度上限 | Yes 全部 maxlength |
+| CSP 已配置 | Yes index.html:10 |
+| API key 硬编码 | Yes 未发现 |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: src/views/Photo.vue
+[FEEDBACK] problem: Photo.vue:511-513 onMounted 中直接调用 Notification.requestPermission()
+[FEEDBACK] solution: 移除 onMounted 中的权限请求，仅在用户主动 toggle 通知时请求
+```
+
+---
+
+### 五、移动端兼容性
+
+#### 阶段三问题修复状态
+
+| 问题 | 状态 |
+|------|------|
+| MC-03: PWA 图标缺失 (P0) | 已修复 -- public/ 下 pwa-192x192.png + 512x512.png 已存在 |
+| MC-04: SW 无 notificationclick (P1) | 未修复 |
+| MC-05: 通知未调用 API (P1) | 已修复 -- onToggleNotification 已实现 |
+| MC-01: scroll-snap-type 缺 -webkit- (P2) | 未修复（iOS 15+ 已支持）|
+| MC-02: -webkit-overflow-scrolling 废弃 (P2) | 未修复（无功能影响）|
+
+#### 安全区域
+
+| 特性 | 状态 |
+|------|------|
+| viewport-fit=cover | Yes |
+| safe-area-inset-bottom/top | Yes |
+| apple-mobile-web-app-capable | Yes |
+| 页面底部 padding + safe-area | Yes 所有页面 |
+| TabBar 安全区域 | Yes 内置 |
+
+#### iOS 触感降级
+
+| 特性 | 状态 |
+|------|------|
+| iOS vibrate 检测 isIOS() | Yes |
+| CSS 降级 hapticFallback() | Yes |
+| HAPTIC_PATTERNS 6 种模式 | Yes |
+| hapticFallback CSS @keyframes 缺失 | P2 |
+
+---
+
+### 六、审核结论
+
+#### 关键发现汇总
+
+| 分类 | 编号 | 严重程度 | 简述 |
+|------|------|----------|------|
+| 设计一致性 | CSS-01~03 | P1 x 3 | 字体/过渡/辅助色 CSS 变量缺失 |
+| 设计一致性 | OL-01~02 | P1 x 2 | index.html theme-color + splash 仍用旧色 |
+| 安全审查 | SEC-01 | P1 x 1 | Photo.vue onMounted 非用户操作请求权限 |
+| 移动端 | MC-04 | P1 x 1 | Service Worker 无 notificationclick |
+| 代码质量 | CQ-04~05 | P2 x 2 | 未使用 import + 组件超限 |
+| 设计一致性 | OL-03~06 | P2 x 4 | 残留旧粉色引用 |
+| 移动端 | MC-01/02 + HAP-01 | P2 x 3 | 前缀/降级动画缺失 |
+
+#### P1 问题清单
+
+1. CSS-01~03: main.css :root 补充 13 个缺失变量
+2. OL-01/02: index.html theme-color + splash 更新
+3. SEC-01: 移除 Photo.vue onMounted 通知权限请求
+4. MC-04: 配置 Service Worker notificationclick
+
+#### 已修复的 P0
+
+| 阶段三 P0 | 状态 |
+|-----------|------|
+| MC-03: PWA 图标缺失 | Yes 已修复 |
+
+#### 审核评分
+
+| 维度 | 评分 | 关键问题数 |
+|------|------|-----------|
+| Vant 替换正确性 | 5/5 | 5 个 P2 建议（非替换错误）|
+| 设计一致性 | 3/5 | 5 个 P1 |
+| 代码质量 | 4/5 | 2 个 P2 |
+| 安全审查 | 4/5 | 1 个 P1 |
+| 移动端兼容性 | 4/5 | 1 个 P1 + 3 个 P2 |
+
+**综合评价：**
+
+Vant 4 组卷替换工作完成度高。所有核心组件正确替换，旧组卷全部删除，PWA 图标 P0 已修复，构建通过。
+
+**最大问题：CSS 变量体系不完整。** DESIGN.md 设计的字体层级和辅助色从未在 main.css :root 中赋值，导致全部 6 个视图文件的字体大小、过渡动画和背景颜色静默失效。
+
+**3 件最重要的事：**
+
+1. 补充 main.css :root 缺失的 CSS 变量（字体/过渡/辅助色）
+2. 更新 index.html theme-color、splash 背景色和文字色
+3. 修复 Photo.vue onMounted 中的通知权限请求时机
+
+---
+
+*本审核报告由审核/质量智能体自动生成*
+*审核日期：2026-07-03*
