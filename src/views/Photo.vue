@@ -28,30 +28,30 @@
 
       <!-- 拍照按钮 -->
       <div class="camera-actions">
-        <button
+        <van-button
           v-if="cameraState === 'idle'"
-          class="btn btn-primary btn-block"
+          type="primary" block
           @click="openCamera"
         >
           📸 咔嚓拍照
-        </button>
-        <button
+        </van-button>
+        <van-button
           v-else-if="cameraState === 'opening'"
-          class="btn btn-primary btn-block"
+          type="primary" block
           disabled
         >
           ⏳ 正在打开摄像头...
-        </button>
-        <button
+        </van-button>
+        <van-button
           v-else-if="cameraState === 'ready'"
-          class="btn btn-primary btn-block"
+          type="primary" block
           @click="takePhoto"
         >
           📸 咔嚓！拍照
-        </button>
+        </van-button>
         <div v-else-if="cameraState === 'captured'" class="captured-actions">
-          <button class="btn btn-secondary" @click="retakePhoto">📸 再拍一张</button>
-          <button class="btn btn-primary" @click="confirmPhoto">❤️ 用这张</button>
+          <van-button type="default" @click="retakePhoto">📸 再拍一张</van-button>
+          <van-button type="primary" @click="confirmPhoto">❤️ 用这张</van-button>
         </div>
       </div>
     </div>
@@ -181,7 +181,7 @@
           <h3>🎉 成就达成！</h3>
           <p>连续打卡 <strong>{{ newBadge?.days }}</strong> 天</p>
           <p class="celebration-name">{{ newBadge?.name }}</p>
-          <button class="btn btn-primary" @click="dismissCelebration" style="margin-top:var(--space-lg)">太棒了！❤️</button>
+          <van-button type="primary" @click="dismissCelebration" style="margin-top:var(--space-lg)">太棒了！❤️</van-button>
         </div>
       </div>
     </Teleport>

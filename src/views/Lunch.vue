@@ -60,20 +60,20 @@
           <h3>{{ resultRestaurant?.name || '去吃这家吧！' }}</h3>
           <p class="result-sub">今天就去吃这个吧 🎉</p>
           <div class="result-actions">
-            <button class="btn btn-primary btn-small" @click="confirmResult">
+            <van-button type="primary" size="small" @click="confirmResult">
               好！去吃！ 🎉
-            </button>
-            <button class="btn btn-secondary btn-small" @click="spinAgainExclude">
+            </van-button>
+            <van-button type="default" size="small" @click="spinAgainExclude">
               🔁 再转（排除当前）
-            </button>
+            </van-button>
           </div>
           <div class="result-secondary-actions">
-            <button class="btn btn-ghost btn-small" @click="navigateToRestaurant">
+            <van-button plain size="small" @click="navigateToRestaurant">
               📍 导航
-            </button>
-            <button class="btn btn-ghost btn-small" @click="toggleFavorite">
+            </van-button>
+            <van-button plain size="small" @click="toggleFavorite">
               {{ isFavorited ? '💔 取消收藏' : '❤️ 收藏' }}
-            </button>
+            </van-button>
           </div>
         </div>
       </div>
@@ -106,13 +106,13 @@
               maxlength="20"
               @keyup.enter="handleAddRestaurant"
             />
-            <button class="btn btn-primary btn-small" @click="handleAddRestaurant">
+            <van-button type="primary" size="small" @click="handleAddRestaurant">
               ➕ 添加
-            </button>
+            </van-button>
           </div>
-          <button class="btn btn-ghost btn-small btn-block" @click="resetAllRestaurants">
+          <van-button plain size="small" block @click="resetAllRestaurants">
             🔄 重置默认列表
-          </button>
+          </van-button>
         </div>
       </div>
     </div>

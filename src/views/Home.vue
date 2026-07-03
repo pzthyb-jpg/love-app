@@ -113,8 +113,8 @@
           <p>选择我们在一起的那一天</p>
           <input type="date" v-model="anniversaryInput" class="input" style="margin-bottom:var(--space-lg);" />
           <div class="dialog-actions">
-            <button class="btn btn-secondary btn-small" @click="showAnniversaryModal = false">取消</button>
-            <button class="btn btn-primary btn-small" @click="saveAnniversary">保存 💕</button>
+            <van-button type="default" size="small" @click="showAnniversaryModal = false">取消</van-button>
+            <van-button type="primary" size="small" @click="saveAnniversary">保存 💕</van-button>
           </div>
         </div>
       </div>

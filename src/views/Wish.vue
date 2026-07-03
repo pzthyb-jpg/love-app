@@ -30,12 +30,12 @@
       <div class="input-footer">
         <span class="char-count">{{ inputText.length }}/200</span>
         <div class="input-buttons">
-          <button class="btn btn-secondary btn-small" @click="submitWish" :disabled="!inputText.trim()">
+          <van-button type="default" size="small" @click="submitWish" :disabled="!inputText.trim()">
             ✨ 许愿
-          </button>
-          <button class="btn btn-secondary btn-small vent-btn" @click="submitVent" :disabled="!inputText.trim()">
+          </van-button>
+          <van-button type="default" size="small" class="vent-btn" @click="submitVent" :disabled="!inputText.trim()">
             😤 吐槽
-          </button>
+          </van-button>
         </div>
       </div>
     </div>
@@ -89,12 +89,12 @@
     <!-- 数据导出/导入 -->
     <div class="card data-actions-card">
       <div class="data-actions">
-        <button class="btn btn-ghost btn-small" @click="exportData">
+        <van-button plain size="small" @click="exportData">
           💾 导出备份
-        </button>
-        <button class="btn btn-ghost btn-small" @click="triggerImport">
+        </van-button>
+        <van-button plain size="small" @click="triggerImport">
           📥 导入恢复
-        </button>
+        </van-button>
         <input
           ref="importInputRef"
           type="file"
@@ -125,9 +125,9 @@
             </div>
           </div>
           <div class="dialog-actions">
-            <button class="btn btn-primary btn-small" @click="showAllMessages = false">
+            <van-button type="primary" size="small" @click="showAllMessages = false">
               知道了 💕
-            </button>
+            </van-button>
           </div>
         </div>
       </div>

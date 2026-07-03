@@ -62,9 +62,9 @@
             </select>
           </div>
         </div>
-        <button class="btn btn-primary btn-block" @click="handleAddMessage">
+        <van-button type="primary" block @click="handleAddMessage">
           ✨ 添加留言
-        </button>
+        </van-button>
       </div>
 
       <!-- 留言列表 -->
@@ -98,8 +98,8 @@
                   </select>
                 </div>
                 <div class="edit-actions">
-                  <button class="btn btn-primary btn-small" @click="saveEdit(msg)">💾 保存</button>
-                  <button class="btn btn-ghost btn-small" @click="cancelEdit">取消</button>
+                  <van-button type="primary" size="small" @click="saveEdit(msg)">💾 保存</van-button>
+                  <van-button plain size="small" @click="cancelEdit">取消</van-button>
                 </div>
               </div>
             </template>
@@ -133,15 +133,15 @@
           <p class="form-hint">当前密码：{{ currentPassword }}</p>
           <div class="reset-row">
             <input v-model="newPassword" class="input" placeholder="输入新4位密码" maxlength="4" type="password" pattern="[0-9]*" />
-            <button class="btn btn-primary btn-small" @click="resetPassword">修改</button>
+            <van-button type="primary" size="small" @click="resetPassword">修改</van-button>
           </div>
         </div>
       </div>
 
       <!-- 返回首页 -->
-      <button class="btn btn-ghost btn-block" @click="router.push('/')" style="margin-top:var(--space-lg)">
+      <van-button plain block @click="router.push('/')" style="margin-top:var(--space-lg)">
         🏠 返回首页
-      </button>
+      </van-button>
     </template>
   </div>
 </template>
