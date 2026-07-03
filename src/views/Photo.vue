@@ -1,0 +1,569 @@
+<template>
+  <div class="page photo-page">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <span class="emoji">📸</span>
+      <h2>拍照打卡</h2>
+    </div>
+
+    <!-- 日期显示 -->
+    <div class="card date-card">
+      <div class="date-display">{{ todayDisplay }}</div>
+    </div>
+
+    <!-- 拍照区域 -->
+    <div class="card camera-card">
+      <div class="preview-area" ref="previewRef">
+        <video v-if="cameraState === 'ready'" ref="videoRef" class="video-preview" autoplay playsinline></video>
+        <img v-else-if="capturedPhoto" :src="capturedPhoto" class="photo-preview" />
+        <div v-else class="preview-placeholder">
+          <span class="placeholder-icon">📸</span>
+          <p>点击下方按钮开始拍照</p>
+        </div>
+      </div>
+
+      <!-- 拍照按钮 -->
+      <div class="camera-actions">
+        <button
+          v-if="cameraState === 'idle'"
+          class="btn btn-primary btn-block"
+          @click="openCamera"
+        >
+          📸 咔嚓拍照
+        </button>
+        <button
+          v-else-if="cameraState === 'ready'"
+          class="btn btn-primary btn-block"
+          @click="takePhoto"
+        >
+          📸 咔嚓！拍照
+        </button>
+        <div v-else-if="cameraState === 'captured'" class="captured-actions">
+          <button class="btn btn-secondary" @click="retakePhoto">📸 再拍一张</button>
+          <button class="btn btn-primary" @click="confirmPhoto">❤️ 用这张</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 今日彩虹屁 -->
+    <div v-if="compliment" class="card compliment-card">
+      <div class="compliment-header">✨ 今日夸夸</div>
+      <p class="compliment-text">"{{ compliment }}"</p>
+      <p class="compliment-time">{{ currentTime }} · 已存档</p>
+    </div>
+
+    <!-- 照片墙 -->
+    <div class="card photo-wall-section">
+      <div class="section-header">
+        <h3>📅 回忆照片墙</h3>
+        <span class="section-subtitle">最近 {{ recentPhotos.length }} 天</span>
+      </div>
+      <div v-if="recentPhotos.length > 0" class="photo-grid">
+        <div
+          v-for="(item, index) in recentPhotos"
+          :key="item.date"
+          class="photo-thumb"
+          @click="openGallery(index)"
+        >
+          <img :src="item.photo" :alt="item.date" />
+        </div>
+        <div v-if="recentPhotos.length === 0" class="empty-thumb">
+          <span>📷</span>
+        </div>
+      </div>
+      <div v-else class="empty-state" style="padding:var(--space-lg)">
+        <p>还没有打卡记录哦，开始打卡吧 📸</p>
+      </div>
+    </div>
+
+    <!-- 成就徽章 -->
+    <div class="card badge-section">
+      <h3>🏆 成就徽章</h3>
+      <div class="badge-grid">
+        <div
+          v-for="badge in allBadges"
+          :key="badge.id"
+          class="badge-item"
+          :class="{ earned: badge.earned }"
+        >
+          <div class="badge-icon" :style="{ background: badge.earned ? badge.color : 'var(--warm-pink)' }">
+            {{ badge.emoji }}
+          </div>
+          <div class="badge-name">{{ badge.name }}</div>
+          <div class="badge-days">{{ badge.days }}天</div>
+        </div>
+      </div>
+      <div v-if="nextMilestone" class="badge-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: (nextMilestone.progress * 100) + '%' }"></div>
+        </div>
+        <span class="progress-text">下一个: {{ nextMilestone.name }} {{ nextMilestone.emoji }} (还差 {{ nextMilestone.remainingDays }} 天)</span>
+      </div>
+    </div>
+
+    <!-- 通知开关 -->
+    <div class="card notification-card">
+      <div class="notification-toggle">
+        <span>⏰ 中午打卡提醒</span>
+        <label class="toggle">
+          <div class="toggle-track" :class="{ active: notifEnabled }" @click="toggleNotification">
+            <div class="toggle-thumb"></div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- 全屏照片浏览 -->
+    <Teleport to="body">
+      <div v-if="galleryOpen" class="gallery-overlay" @click.self="closeGallery">
+        <div class="gallery-close" @click="closeGallery">✕</div>
+        <div class="gallery-scroll" ref="galleryScrollRef">
+          <div v-for="(item, idx) in galleryPhotos" :key="idx" class="gallery-slide">
+            <img :src="item.photo" :alt="item.date" />
+            <div class="gallery-info">
+              <p>{{ item.date }}</p>
+              <p>{{ item.compliment }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 成就庆祝动画 -->
+    <Teleport to="body">
+      <div v-if="showCelebration" class="dialog-overlay" @click.self="dismissCelebration">
+        <div class="dialog-box celebration-box">
+          <div class="celebration-emoji">{{ newBadge?.emoji }}</div>
+          <h3>🎉 成就达成！</h3>
+          <p>连续打卡 <strong>{{ newBadge?.days }}</strong> 天</p>
+          <p class="celebration-name">{{ newBadge?.name }}</p>
+          <button class="btn btn-primary" @click="dismissCelebration" style="margin-top:var(--space-lg)">太棒了！❤️</button>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useDataStore } from '../stores/dataStore.js'
+import { getTodayStr, formatDate, calculateStreak, checkMilestone, getNextMilestone, BADGE_DEFINITIONS } from '../composables/useStreak.js'
+import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
+import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
+
+const { state, addCheckin, updateStreak, addBadge } = useDataStore()
+
+const videoRef = ref(null)
+const previewRef = ref(null)
+const galleryScrollRef = ref(null)
+
+// 摄像头状态
+const cameraState = ref('idle')  // idle | opening | ready | captured
+const capturedPhoto = ref(null)
+const compliment = ref('')
+let mediaStream = null
+
+// 画廊
+const galleryOpen = ref(false)
+const galleryPhotos = ref([])
+
+// 庆祝
+const showCelebration = ref(false)
+const newBadge = ref(null)
+
+const notifEnabled = ref(
+  safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true'
+)
+
+// 今日日期
+const todayDisplay = computed(() => {
+  const d = new Date()
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 星期${weekdays[d.getDay()]}`
+})
+
+const currentTime = computed(() => {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+})
+
+// 最近14天照片
+const recentPhotos = computed(() => {
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+  const cutoff = formatDate(fourteenDaysAgo)
+  return state.checkinHistory
+    .filter(h => h.date >= cutoff && h.photo)
+    .slice(0, 14)
+})
+
+// 全部徽章
+const allBadges = computed(() => {
+  return BADGE_DEFINITIONS.map(def => ({
+    ...def,
+    earned: state.checkinBadges.some(b => b.id === def.id)
+  }))
+})
+
+// 下一个里程碑
+const nextMilestone = computed(() => {
+  const streak = calculateStreak(state.checkinHistory)
+  return getNextMilestone(streak, state.checkinBadges)
+})
+
+// 生成彩虹屁
+function generateCompliment() {
+  const templates = [
+    '宝今天的你太让人心动了！💕',
+    '今天的宝也超好看！🌟',
+    '我的宝怎么可以这么可爱！🥰',
+    '每天都被宝的美貌击中！💘',
+    '宝的笑容是今天最好的礼物！🎁',
+    '今天的宝闪闪发光呢！✨',
+    '看到宝的照片，心都化了～💗',
+    '宝真是一天比一天好看！🌹',
+    '这位仙女今天也下凡了呀！🧚‍♀️',
+    '宝的颜值今天也是满分！💯',
+    '今天的宝让我又心动了一次！💓',
+    '宝贝今天也太好看了吧！😍',
+    '这个世界因为有宝才美好！🌈',
+    '宝的照片是我今天最大的惊喜！🎀',
+    '每次看到宝都觉得好幸福！🦋'
+  ]
+  return templates[Math.floor(Math.random() * templates.length)]
+}
+
+// 打开摄像头
+async function openCamera() {
+  cameraState.value = 'opening'
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 540 }, height: { ideal: 540 } },
+      audio: false
+    })
+    await nextTick()
+    if (videoRef.value) {
+      videoRef.value.srcObject = mediaStream
+    }
+    cameraState.value = 'ready'
+  } catch (e) {
+    window.__showToast?.('😢 无法打开摄像头，请检查权限设置', 'error')
+    cameraState.value = 'idle'
+  }
+}
+
+// 拍照
+function takePhoto() {
+  if (!videoRef.value) return
+  const canvas = document.createElement('canvas')
+  canvas.width = 540
+  canvas.height = 540
+  const ctx = canvas.getContext('2d')
+  ctx.translate(canvas.width, 0)
+  ctx.scale(-1, 1)  // 镜像翻转
+  ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height)
+  capturedPhoto.value = canvas.toDataURL('image/jpeg', 0.7)
+  cameraState.value = 'captured'
+  hapticFeedback(null, HAPTIC_PATTERNS.SHUTTER)
+}
+
+// 再拍一张
+function retakePhoto() {
+  capturedPhoto.value = null
+  compliment.value = ''
+  cameraState.value = 'ready'
+}
+
+// 确认照片
+function confirmPhoto() {
+  if (!capturedPhoto.value) return
+  
+  const today = getTodayStr()
+  const now = new Date()
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const comp = generateCompliment()
+  compliment.value = comp
+  
+  // 保存打卡记录
+  const record = {
+    date: today,
+    time,
+    photo: capturedPhoto.value,
+    compliment: comp,
+    timestamp: now.getTime()
+  }
+  addCheckin(record)
+  
+  // 更新连续打卡
+  const streak = calculateStreak(state.checkinHistory)
+  updateStreak({
+    streakDays: streak,
+    lastCheckinDate: today,
+    longestStreak: Math.max(streak, state.checkinStreak.longestStreak || 0),
+    initialized: true
+  })
+  
+  // 检查里程碑
+  const milestone = checkMilestone(streak, state.checkinBadges)
+  if (milestone) {
+    addBadge(milestone)
+    newBadge.value = milestone
+    showCelebration.value = true
+    hapticFeedback(null, HAPTIC_PATTERNS.ACHIEVEMENT)
+  }
+  
+  // 关闭摄像头
+  stopCamera()
+  
+  window.__showToast?.('🎉 打卡成功！', 'success')
+}
+
+// 关闭摄像头
+function stopCamera() {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop())
+    mediaStream = null
+  }
+}
+
+// 打开全屏画廊
+function openGallery(index) {
+  galleryPhotos.value = recentPhotos.value.map(p => ({
+    photo: p.photo,
+    date: p.date,
+    compliment: p.compliment
+  }))
+  galleryOpen.value = true
+  nextTick(() => {
+    if (galleryScrollRef.value) {
+      const scrollWidth = window.innerWidth
+      galleryScrollRef.value.scrollLeft = index * scrollWidth
+    }
+  })
+}
+
+function closeGallery() {
+  galleryOpen.value = false
+}
+
+function dismissCelebration() {
+  showCelebration.value = false
+  newBadge.value = null
+}
+
+function toggleNotification() {
+  notifEnabled.value = !notifEnabled.value
+  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, notifEnabled.value ? 'true' : 'false')
+  window.__showToast?.(notifEnabled.value ? '⏰ 提醒已开启' : '⏰ 提醒已关闭', 'info')
+}
+
+// 安全读取辅助
+function safeGetString(key, defaultValue) {
+  try {
+    return localStorage.getItem(key) || defaultValue
+  } catch (e) {
+    return defaultValue
+  }
+}
+function safeSetString(key, value) {
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+onUnmounted(() => {
+  stopCamera()
+})
+</script>
+
+<style scoped>
+/* 日期卡片 */
+.date-card {
+  text-align: center;
+  padding: var(--space-md);
+}
+.date-display {
+  font-size: var(--font-body);
+  color: var(--text-secondary);
+}
+
+/* 拍照区域 */
+.preview-area {
+  width: 100%;
+  height: 280px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--warm-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-lg);
+  border: 2px solid rgba(255, 107, 157, 0.15);
+}
+.video-preview,
+.photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.preview-placeholder {
+  text-align: center;
+  color: var(--text-secondary);
+}
+.placeholder-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: var(--space-sm);
+}
+.captured-actions {
+  display: flex;
+  gap: var(--space-md);
+}
+.captured-actions .btn {
+  flex: 1;
+}
+
+/* 彩虹屁卡片 */
+.compliment-card {
+  background: linear-gradient(135deg, var(--warm-pink), var(--cream));
+}
+.compliment-header {
+  font-size: var(--font-body-small);
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+.compliment-text {
+  font-size: var(--font-h3);
+  line-height: 1.6;
+  color: var(--text);
+}
+.compliment-time {
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+  margin-top: var(--space-sm);
+}
+
+/* 照片墙 */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+.section-header h3 {
+  font-size: var(--font-h3);
+  font-weight: 600;
+}
+.section-subtitle {
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+.photo-thumb {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+}
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-fast);
+}
+.photo-thumb:active img {
+  transform: scale(1.05);
+}
+.empty-thumb {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--warm-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--text-secondary);
+}
+
+/* 成就徽章 */
+.badge-grid {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  opacity: 0.5;
+  transition: opacity var(--transition-normal);
+}
+.badge-item.earned {
+  opacity: 1;
+}
+.badge-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+.badge-name {
+  font-size: var(--font-caption);
+  font-weight: 500;
+}
+.badge-days {
+  font-size: var(--font-badge);
+  color: var(--text-secondary);
+}
+.badge-progress {
+  margin-top: var(--space-md);
+}
+.badge-progress .progress-text {
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
+  display: block;
+}
+
+/* 通知开关 */
+.notification-card {
+  padding: var(--space-md) var(--space-xl);
+}
+.notification-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.notification-toggle span {
+  font-size: var(--font-body);
+}
+
+/* 庆祝弹窗 */
+.celebration-box {
+  text-align: center;
+}
+.celebration-emoji {
+  font-size: 64px;
+  margin-bottom: var(--space-md);
+  animation: bounceIn 0.5s ease;
+}
+.celebration-name {
+  font-size: var(--font-h2);
+  font-weight: 700;
+  color: var(--primary);
+  margin-top: var(--space-sm);
+}
+</style>
