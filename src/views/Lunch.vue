@@ -81,40 +81,38 @@
 
     <!-- 餐厅管理 -->
     <div class="card manage-card">
-      <div class="manage-header" @click="showManage = !showManage">
-        <h3 class="card-title">🏪 餐厅管理</h3>
-        <span class="toggle-icon">{{ showManage ? '▲' : '▼' }}</span>
-      </div>
-      <div v-show="showManage" class="manage-body">
-        <div class="restaurant-list">
-          <div
-            v-for="(r, idx) in restaurantList"
-            :key="idx"
-            class="restaurant-item"
-          >
-            <span class="r-emoji">{{ r.emoji }}</span>
-            <span class="r-name">{{ r.name }}</span>
-            <button class="r-delete" @click="confirmDelete(r)">❌</button>
+      <van-collapse v-model="showManage" :accordion="true" class="manage-collapse">
+        <van-collapse-item title="🏪 餐厅管理" name="manage">
+          <div class="restaurant-list">
+            <div
+              v-for="(r, idx) in restaurantList"
+              :key="idx"
+              class="restaurant-item"
+            >
+              <span class="r-emoji">{{ r.emoji }}</span>
+              <span class="r-name">{{ r.name }}</span>
+              <button class="r-delete" @click="confirmDelete(r)">❌</button>
+            </div>
           </div>
-        </div>
-        <div class="manage-actions">
-          <div class="add-row">
-            <input
-              v-model="newRestaurantName"
-              placeholder="输入餐厅名称"
-              class="input"
-              maxlength="20"
-              @keyup.enter="handleAddRestaurant"
-            />
-            <van-button type="primary" size="small" @click="handleAddRestaurant">
-              ➕ 添加
+          <div class="manage-actions">
+            <div class="add-row">
+              <input
+                v-model="newRestaurantName"
+                placeholder="输入餐厅名称"
+                class="input"
+                maxlength="20"
+                @keyup.enter="handleAddRestaurant"
+              />
+              <van-button type="primary" size="small" @click="handleAddRestaurant">
+                ➕ 添加
+              </van-button>
+            </div>
+            <van-button plain size="small" block @click="resetAllRestaurants">
+              🔄 重置默认列表
             </van-button>
           </div>
-          <van-button plain size="small" block @click="resetAllRestaurants">
-            🔄 重置默认列表
-          </van-button>
-        </div>
-      </div>
+        </van-collapse-item>
+      </van-collapse>
     </div>
   </div>
 </template>
@@ -130,7 +128,7 @@ import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 const { state, addLunchRecord, addRestaurant, removeRestaurant, resetRestaurants } = useDataStore()
 
 const wheelRef = ref(null)
-const showManage = ref(true)
+const showManage = ref('manage')
 const newRestaurantName = ref('')
 const showResult = ref(false)
 const resultRestaurant = ref(null)
@@ -405,22 +403,23 @@ const canSpin = computed(() => restaurantList.value.length >= 2)
   padding: var(--space-xs) var(--space-md);
 }
 
-/* 餐厅管理 */
-.manage-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
+/* 餐厅管理 - Vant Collapse */
+.manage-card {
+  padding: 0;
+  overflow: hidden;
 }
 
-.manage-header .toggle-icon {
-  font-size: var(--font-caption);
-  color: var(--text-secondary);
+.manage-collapse {
+  --van-collapse-title-background: transparent;
+  --van-collapse-title-font-size: 17px;
+  --van-collapse-title-font-weight: 600;
+  --van-collapse-title-padding: var(--space-lg) var(--space-xl);
+  --van-collapse-content-background: transparent;
+  --van-collapse-content-padding: 0 var(--space-xl) var(--space-xl);
 }
 
-.manage-body {
-  margin-top: var(--space-lg);
+.manage-collapse :deep(.van-collapse-item__content) {
+  padding: var(--space-lg) var(--space-xl);
 }
 
 .restaurant-list {
