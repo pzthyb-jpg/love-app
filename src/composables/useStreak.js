@@ -80,6 +80,7 @@ function getTodayStr() {
 // 获取本周日期列表（从周一开始）
 function getWeekDates() {
   const today = new Date()
+  const todayStr = formatDate(today)
   const dayOfWeek = today.getDay() // 0=周日, 1=周一...
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
   const weekDays = ['一', '二', '三', '四', '五', '六', '日']
@@ -87,10 +88,11 @@ function getWeekDates() {
   return weekDays.map((name, i) => {
     const d = new Date(today)
     d.setDate(today.getDate() + mondayOffset + i)
+    const dateStr = formatDate(d)
     return {
       dayName: name,
-      dateStr: formatDate(d),
-      isToday: i === dayOfWeek + mondayOffset || (dayOfWeek === 0 && i === 6)
+      dateStr,
+      isToday: dateStr === todayStr
     }
   })
 }

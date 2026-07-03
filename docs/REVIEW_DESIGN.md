@@ -230,7 +230,7 @@ P2（锦上添花）
 | F-03 | `specialCondition` 枚举值不完整 | §4.3 | 只给了 `'anniversary' | 'festival'`，但 `null` 含义不明确 | 补充完整枚举：`'anniversary' | 'festival' | null` |
 | F-05 | `checkin_streak.longestStreak` 在 PRD 的数据字段定义中提到但未见计算逻辑 | §6.3 / §10.1 | 代码段中未提供 longestStreak 计算方式 | 补充 `calculateLongestStreak()` 的伪代码或说明 |
 | F-05 | `checkin_streak` 中缺少初始化标志 | §10.1 | 首次从 v1.0 升级时难以区分「从未计算过」和 streak=0 | 补充 `initialized: boolean` 字段或迁移标志 |
-| §10 | `wishes` 字段 `fulfilled` 未定义 | §10.1 | PRD 中提到「已实现」但 wishes 数据结构中没有 `fulfilled` 字段 | 补充 `fulfilled: boolean`（默认 false）和 `fulfilledDate: string | null` |
+| §10 | `wishes` 字段 `fulfilled` 未定义 | §10.1 | PRD 中提到「已实现」但 wishes 数据结构中没有 `fulfilled` 字段 | 补充 `fulfilled: boolean`（默认 false）和 `fulfilledDate: string \| null` |
 
 #### 1.3 默认值与边界值
 
@@ -383,3 +383,450 @@ P2（锦上添花）
 3. **修复递归风险**：§4.3 `getTodaysMessage()` 的无限递归需加 retry 上限
 
 **PRD 整体成熟度：** 85/100 — 适合进入编码阶段，建议先修复上述 3 件最重要的事。
+
+---
+
+## 阶段三：代码审核
+
+> 基于 `/Users/wanghongbo/love-app/src/` 完整源码审查
+> 审核日期：2026-07-03
+> 代码分支：`main`（已合并所有 feat-v2-step4 代码）
+
+---
+
+### 一、设计一致性
+
+#### 1.1 页面结构与 DESIGN.md 线框图对照
+
+| 页面 | DESIGN.md 线框图 | 代码实现 | 一致性 |
+|------|-----------------|----------|--------|
+| 🏠 首页仪表盘 | 包含：Header/爱的数据/今日状态/留言预览/本周打卡 | ✅ 完全匹配：4 个卡片 + 纪念日设置弹窗 | ✅ 一致 |
+| 📸 拍照打卡 | 包含：日期/拍照区域(280px)/彩虹屁/照片墙/成就徽章/通知开关 | ⚠️ 预览区高度 280px vs DESIGN 220px，其他均实现 | ✅ 基本一致 |
+| 🍽️ 午餐转盘 | 包含：转盘(300px)/统计/结果弹窗(导航+收藏+再转)/餐厅管理 | ✅ 完全匹配：所有元素均实现 | ✅ 一致 |
+| ✨ 愿望池 | 包含：留言入口/输入区/筛选栏/气泡/导出导入/操作菜单 | ✅ 完全匹配：所有元素均实现 | ✅ 一致 |
+| 💌 留言管理 | 包含：密码验证/新建留言/留言列表/密码重置 | ✅ 完全匹配：所有元素均实现 | ✅ 一致 |
+
+**发现的问题：**
+
+| # | 问题 | 类型 | 严重程度 |
+|---|------|------|----------|
+| DCC-01 | **拍照流程设计与代码不一致**：DESIGN.md 设计了 4 状态流程（IDLE→CAMERA_READY→PHOTO_CAPTURED→确认用这张），但代码实现了带「用这张」确认步骤的 4 状态流程（匹配 DESIGN，不匹配 PRD 的 3 状态） | 流程分歧 | P1 |
+
+**分析**：PRD §8.1 描述的是 3 步流程（自动保存无确认），但实际代码中 Photo.vue 实现了 `captured` 状态后的两个按钮「再拍一张」和「用这张」，这是 DESIGN.md 中描述的 4 状态流程。代码选择了 DESIGN.md 的方案而非 PRD 的 3 步方案。这是一个需要 PRD 与 DESIGN 对齐的问题，代码本身行为合理。
+
+| # | 问题 | 类型 | 严重程度 |
+|---|------|------|----------|
+| DCC-02 | **照片墙存储天数不一致**：PRD §10.3 明确说「最近 14 天」，DESIGN.md 说「最近 7 天」。代码实现了 14 天（`fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)`） | 存储阈值分歧 | P1 |
+
+```
+[FEEDBACK] type: design_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: docs/DESIGN.md
+[FEEDBACK] problem: 照片墙存储天数：DESIGN.md 说「最近 7 天」，而 PRD.md 说「最近 14 天」，代码按 14 天实现。跨文档不一致需统一
+[FEEDBACK] solution: 统一为 14 天（PRD 优化方案），更新 DESIGN.md 中 §F-02 的「最近 7 天」为「最近 14 天」
+```
+
+#### 1.2 数据字段一致性（代码 vs PRD 定义）
+
+| 数据实体 | PRD 定义字段 | 代码使用字段 | 一致性 |
+|---------|-------------|-------------|--------|
+| `checkin_history` | date/time/photo/compliment/timestamp | ✅ 完全一致 | ✅ |
+| `wishes` | id/text/type/time/timeStr/dateStr | ✅ 代码额外实现了 `fulfilled`/`fulfilledBy` | ⚠️ PRD 未定义但代码已实现 |
+| `messages` | id/text/type/author/createdAt/displayedDates/specialCondition | ✅ 完全一致 | ✅ |
+| `checkin_streak` | streakDays/lastCheckinDate/longestStreak | ✅ 代码额外实现了 `initialized` 标志 | ⚠️ PRD 未定义 |
+| `checkin_badges` | id/name/emoji/earnedDate | ✅ 完全一致 | ✅ |
+| `love_anniversary` | YYYY-MM-DD | ✅ 一致 | ✅ |
+| `notification_enabled` | 'true'/'false' | ✅ 一致 | ✅ |
+
+**发现的问题：**
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| DCC-03 | `wishes` 中的 `fulfilled`/`fulfilledBy` 字段代码已实现但 PRD 中无定义。代码 `dataStore.js` 中的 `messages` 存储使用了 `STORAGE_KEYS.MESSAGES` 但 PRD 中 localStorage key 统一名为 `messages` — 一致 | P2 建议补充 PRD |
+
+#### 1.3 localStorage Key 命名一致
+
+| Key | PRD 定义 | 代码 (STORAGE_KEYS) | 一致性 |
+|-----|---------|-------------------|--------|
+| `checkin_history` | ✅ | ✅ | ✅ |
+| `wishes` | ✅ | ✅ | ✅ |
+| `restaurants` | ✅ | ✅ | ✅ |
+| `lunch_history` | ✅ | ✅ | ✅ |
+| `messages` | ✅ | ✅ | ✅ |
+| `checkin_streak` | ✅ | ✅ | ✅ |
+| `checkin_badges` | ✅ | ✅ | ✅ |
+| `love_anniversary` | ✅ | ✅ | ✅ |
+| `notification_enabled` | ✅ | ✅ | ✅ |
+| `admin_password` | PRD 未定义 | ✅ 代码 STORAGE_KEYS.ADMIN_PASSWORD | ⚠️ PRD 遗漏 |
+
+**发现的问题：**
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| DCC-04 | `admin_password` key 代码中已使用（STORAGE_KEYS.ADMIN_PASSWORD = 'admin_password'），但 PRD 中未定义该 localStorage key | P2 |
+
+#### 1.4 功能行为一致性（代码 vs PRD 业务规则）
+
+| PRD 业务规则 | 代码实现 | 一致性 |
+|-------------|---------|--------|
+| App 默认进入首页 | ✅ router 默认路由 `/` 指向 Home.vue | ✅ |
+| 状态圆点击跳转到对应功能页 | ✅ Home.vue `goToTab(index)` 映射 `['/', '/photo', '/lunch', '/wish']` | ✅ |
+| 在一起天数包含当天 | ✅ `getLoveDays()` 中 `Math.floor(...) + 1` | ✅ |
+| 无纪念日时显示「设置纪念日 🎂」 | ✅ Home.vue `v-else` 分支显示 | ✅ |
+| 留言展示按时间段匹配 | ✅ `getTodaysMessage()` 实现了完整规则 | ✅ |
+| 留言不重复展示 | ✅ `displayedDates.includes(currentDateStr)` 过滤 | ✅ |
+| 留言循环重置 | ✅ `getTodaysMessage()` 实现了重置逻辑 | ✅ |
+| 愿望/吐槽气泡不同样式 | ✅ Wish.vue `wish-bubble.wish` 和 `.vent` CSS | ✅ |
+| 筛选 tab（全部/愿望/吐槽/已实现） | ✅ filterTabs 数组 + filteredWishes computed | ✅ |
+| 删除二次确认 | ✅ window.confirm() 用于删除餐厅和愿望 | ✅ |
+| 成就里程碑 7/14/21/30 天 | ✅ BADGE_DEFINITIONS 常量 | ✅ |
+| 照片墙 3 列缩略图 | ✅ `grid-template-columns: repeat(3, 1fr)` | ✅ |
+| 缩略图尺寸约 80×80 | ⚠️ 缩略图使用 `aspect-ratio: 1` 自适应，未固定 80×80 | P2 建议 |
+| 全屏浏览左右滑动 | ✅ gallery-overlay + scroll-snap-type | ✅ |
+| 全屏照片下方显示彩虹屁 | ✅ `gallery-info` 显示 date + compliment | ✅ |
+
+---
+
+### 二、代码质量
+
+#### 2.1 Vue 3 Composition API + `<script setup>` 使用
+
+| 文件 | 使用 `<script setup>` | Composition API | 一致性 |
+|------|---------------------|-----------------|--------|
+| Home.vue | ✅ | ✅ ref/computed/onMounted/nextTick | ✅ |
+| Photo.vue | ✅ | ✅ ref/computed/onMounted/onUnmounted/nextTick | ✅ |
+| Lunch.vue | ✅ | ✅ ref/computed/nextTick | ✅ |
+| Wish.vue | ✅ | ✅ ref/computed | ✅ |
+| MessagesAdmin.vue | ✅ | ✅ ref/computed/onMounted | ✅ |
+| TabBar.vue | ✅ | ✅ computed | ✅ |
+| Toast.vue | ✅ | ✅ ref | ✅ |
+| ConfirmDialog.vue | ✅ | ✅ ref | ✅ |
+| LunchWheel.vue | ✅ | ✅ ref/onMounted/watch/nextTick | ✅ |
+
+**评价**：✅ 所有组件一致使用 Vue 3 Composition API + `<script setup>`，无 Options API 遗留。
+
+#### 2.2 死代码、console.log、调试注释
+
+| 检查项 | 结果 |
+|--------|------|
+| 搜索 `console.log` | ✅ 未找到任何 console.log 遗留 |
+| 搜索 `v-html`/`innerHTML`/XSS 风险 | ✅ 未找到 |
+| 搜索调试注释（`// TODO`, `// FIXME`, `// debug`） | ✅ 无未清理的调试注释 |
+
+**评价**：✅ 代码干净，无死代码或调试遗留。
+
+#### 2.3 组件拆分与 composables 复用
+
+**组件结构：**
+
+```
+src/
+├── components/
+│   ├── TabBar.vue         — 底部导航（4 tab）
+│   ├── Toast.vue          — 全局 Toast 系统（3 种类型）
+│   ├── ConfirmDialog.vue  — 确认弹窗组件
+│   └── LunchWheel.vue     — 转盘 Canvas 绘制 + 动画
+├── views/
+│   ├── Home.vue           — 首页仪表盘
+│   ├── Photo.vue          — 拍照打卡（含照片墙、成就、全屏浏览）
+│   ├── Lunch.vue          — 午餐转盘（含统计、餐厅管理）
+│   ├── Wish.vue           — 愿望池（含留言弹窗、导入导出）
+│   └── MessagesAdmin.vue  — 留言管理端（含密码验证）
+├── composables/
+│   ├── useStorage.js      — localStorage 安全读写
+│   ├── useHaptics.js      — 触感反馈（降级）
+│   ├── useStreak.js       — 连续打卡计算 + 成就
+│   └── useMessages.js     — 留言匹配算法
+├── stores/
+│   └── dataStore.js       — 响应式数据层
+└── router/
+    └── index.js           — 5 路由配置
+```
+
+**评价**：
+- ✅ 组件拆分合理：LunchWheel 作为独立组件从 Lunch.vue 抽离，复用性好
+- ✅ composables 职责清晰：useStorage（存储抽象）、useHaptics（触感）、useStreak（打卡逻辑）、useMessages（留言逻辑）各司其职
+- ✅ dataStore.js 作为单例状态管理，统一封装了所有 CRUD 操作
+- ⚠️ 建议：ConfirmDialog 组件在代码中几乎没被使用（实际使用的 `window.confirm()` 是原生 API），存在但未通过 `defineExpose` 方式被引用
+
+#### 2.4 CSS 变量体系
+
+| 检查项 | 结果 |
+|--------|------|
+| CSS 变量定义 | ✅ `main.css` 定义了完整的变量体系：颜色/圆角/阴影/间距/字体/过渡/TabBar 高度/安全区域 |
+| SCSS/CSS 变量混合使用 | ✅ 全部使用 CSS 变量（`var(--primary)` 等），无 sass/less 遗留 |
+| 硬编码颜色值 | ⚠️ 存在少量硬编码值（详见下方） |
+
+**硬编码值问题：**
+
+| 位置 | 硬编码值 | 应使用变量 | 严重程度 |
+|------|---------|-----------|----------|
+| `LunchWheel.vue:58-62` | COLORS 数组 `'#FF6B9D', '#C084FC', '#FFD700'...` | 转盘颜色属于设计常量，可接受 | P2 建议 |
+| `Wish.vue:506` | `background: linear-gradient(135deg, #F3E8FF, #E8F0FE)` | 与 PRD 定义一致，可接受 | ✅ 可接受 |
+| `Wish.vue:516` | `background: linear-gradient(135deg, #FFE5D9, #FFF0F3)` | 与 PRD 定义一致，可接受 | ✅ 可接受 |
+| `MessagesAdmin.vue` | msg-type-badge colors (硬编码 `#E3F2FD`, `#1565C0` 等) | 建议使用 CSS 变量 | P2 建议 |
+| `Wish.vue` | `.wish-bubble.fulfilled` 中 `color: #F57F17` | 建议使用 CSS 变量 | P2 建议 |
+
+#### 2.5 性能问题
+
+| 检查项 | 评估 |
+|--------|------|
+| 首页 computed 依赖 | ✅ 所有首页数据通过 computed 从 state 聚合，响应式依赖追踪 |
+| 照片墙懒加载 | ⚠️ 全屏浏览时一次性加载 `recentPhotos` 所有照片，未实现懒加载（但最多 14 张，影响可接受） |
+| 转盘动画 | ✅ 使用 requestAnimationFrame，60fps 流畅 |
+| 页面切换动画 | ✅ App.vue 使用 `<transition>`，smooth 切换 |
+| localStorage 写入频率 | ✅ 每次操作仅写一次，无冗余写入 |
+| confirmDialog 未使用 | ✅ 非性能问题，是 unused component |
+
+**发现的问题：**
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| CQ-01 | **全屏画廊未实现懒加载**：`galleryPhotos` 一次性加载全部 `recentPhotos` 照片内存，虽然数据量不大（最多 14 张），但每张 base64 图片约 100-200KB，最坏情况约 2.8MB 内存 | P2 建议 |
+| CQ-02 | **Photo.vue `cameraState` 缺少 `opening` 状态的 UI 反馈**：从 `idle`→`opening` 时按钮变为加载态，但 `cameraState` 值 'opening' 在模板中未对应任何按钮渲染（`v-if="cameraState === 'idle'"`、`v-else-if="cameraState === 'ready'"`、`v-else-if="cameraState === 'captured'"` — 没有 'opening' 分支）这意味着在摄像头加载期间按钮消失 | P1 |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: src/views/Photo.vue
+[FEEDBACK] problem: cameraState='opening' 时模板没有对应的按钮渲染，用户在摄像头加载期间看不到任何操作按钮，出现 UI 空白期
+[FEEDBACK] solution: 在 camera-card 的 actions 区域增加 v-if="cameraState === 'opening'" 分支，显示「⏳ 正在打开摄像头...」加载态按钮（disabled）
+```
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| CQ-03 | **未使用的 ConfirmDialog 组件**：`ConfirmDialog.vue` 已在项目中存在但未被任何视图引用，实际使用都是 `window.confirm()` 原生 API | P2 建议 |
+
+---
+
+### 三、Bug 检测
+
+#### 3.1 边界情况处理
+
+| 场景 | 代码处理 | 评价 |
+|------|---------|------|
+| 无打卡记录时照片墙 | ✅ `v-else` 显示「还没有打卡记录哦，开始打卡吧 📸」 | ✅ |
+| 无留言时展示 | ✅ Home.vue `v-if="todayMessage"` 条件渲染 | ✅ |
+| 无留言时管理端 | ✅ MessagesAdmin.vue 显示空状态「还没有留言，添加第一条吧」 | ✅ |
+| 餐厅 < 2 时转盘禁用 | ✅ LunchWheel `:disabled="isSpinning \|\| restaurants.length < 2"` | ✅ |
+| localStorage 数据损坏 | ✅ safeGetJSON try-catch + removeItem | ✅ |
+| localStorage 容量满 | ✅ safeSetJSON QuotaExceededError + autoCleanupStorage | ✅ |
+
+**发现的问题：**
+
+| # | 问题 | 类型 | 严重程度 |
+|---|------|------|----------|
+| BUG-01 | **`autoCleanupStorage` 清理后未同步 state**：`useStorage.js:48-63` 中 `autoCleanupStorage()` 直接调用 `localStorage.setItem()` 操作的是 `checkin_history`，但不会更新 `state.checkinHistory` 响应式对象。写入成功返回 true 后，父级继续执行 `safeSetJSON(key, value)` 写入新数据。但被清理的 `checkin_history` 中旧的条目已在 localStorage 中被删除，而 `state.checkinHistory` 中仍保留着旧数据——**导致 state 与 localStorage 不同步** | 数据不一致 | P1 |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: src/composables/useStorage.js
+[FEEDBACK] problem: autoCleanupStorage() 清理 checkin_history 后未同步 state.checkinHistory，导致 state 和 localStorage 数据不一致
+[FEEDBACK] solution: autoCleanupStorage 应通过回调或事件通知 dataStore 更新 state，或者清除操作直接在 dataStore 中触发
+```
+
+| # | 问题 | 类型 | 严重程度 |
+|---|------|------|----------|
+| BUG-02 | **`getWeekDates()` 的 `isToday` 计算逻辑错误**：`useStreak.js:93` 中计算 `isToday` 使用 `i === dayOfWeek + mondayOffset`，当 `dayOfWeek === 0`（周日）时 `mondayOffset = -6`，此时 `i=6`（周日）时 `isToday = 6 === (0 + (-6) + 6) = 6` 正确，但 `dayName` 数组 `['一', '二', '三', '四', '五', '六', '日']` 中周日对应 `i=6`，这没问题。但当 `dayOfWeek = 0` 且 `i=0`（周一）时，`isToday = 0 === (0 + (-6)) = 0`，这会错误地将周一标记为今天。Sunday 的 `dayOfWeek=0`，`mondayOffset = 1 - 0 = 1`，`isToday` 计算为 `i === 0 + 1 = 1`（周二）。实际上正确的公式是 `dayOfWeek === 0 ? i === 6 : i === dayOfWeek - 1` | 日期计算错误 | P1 |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: src/composables/useStreak.js
+[FEEDBACK] problem: getWeekDates() 中 isToday 计算在非周日情况下错误。当 dayOfWeek=3（周三），i=2（周三）时 mondayOffset=-2，isToday = i === dayOfWeek + mondayOffset = 2 === 3 + (-2) = 1 → false。正确公式应为：dayOfWeek === 0 ? i === 6 : i === dayOfWeek - 1
+[FEEDBACK] solution: 修改 getWeekDates() 中 isToday 的计算逻辑
+```
+
+#### 3.2 异步操作异常处理
+
+| 场景 | 处理方式 | 评价 |
+|------|---------|------|
+| 摄像头打开失败 | ✅ try-catch + showToast 友好提示 + 重置为 idle | ✅ |
+| localStorage 写入失败 | ✅ safeSetJSON 返回 false，但上层未处理返回值 | ⚠️ 见下方 |
+| FileReader 读取失败 | ✅ try-catch 包裹 JSON.parse | ✅ |
+| Toast 不存在的优雅降级 | ✅ `window.__showToast?.()` 可选链 | ✅ |
+
+**发现的问题：**
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| BUG-03 | **safeSetJSON 返回值被忽略**：`dataStore.js` 中所有 `safeSetJSON()` 调用均未检查返回值。当 localStorage 写入失败（如容量满或隐私模式）时，UI 显示成功但数据实际未持久化 | P1 |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: src/stores/dataStore.js
+[FEEDBACK] problem: 所有 safeSetJSON() 返回值未检查，写入静默失败时用户不知情
+[FEEDBACK] solution: 在 dataStore.js 的写入操作中检查 safeSetJSON 返回值，失败时调用 window.__showToast?.('⚠️ 数据保存失败，请检查存储空间', 'error')
+```
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| BUG-04 | **`Photo.vue:356` `safeSetString` 返回值未检查**：toggleNotification 中写入 `notification_enabled` 未检查写入是否成功 | P2 |
+
+#### 3.3 导航逻辑
+
+| 路由 | 入口 | 出口 | 闭环 |
+|------|------|------|------|
+| `/` (Home) | App 启动 | tab 切换 | ✅ |
+| `/photo` | tab 切换 | tab 切换 | ✅ |
+| `/lunch` | tab 切换 | tab 切换 | ✅ |
+| `/wish` | tab 切换 | tab 切换 | ✅ |
+| `/messages-admin` | 连击标题 5 次 | 按钮「返回首页」 | ✅ |
+
+**发现的问题：**
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| BUG-05 | **MessagesAdmin.vue 缺少后退导航**：管理员页面有「返回首页」按钮（`router.push('/')`），但无浏览器后退支持。使用 `history: createWebHashHistory()` 意味着 `history.back()` 不可靠。建议同时增加 `onBeforeRouteLeave` 或在页面左上角增加返回按钮 | P2 |
+
+#### 3.4 用户输入安全
+
+| 输入点 | XSS 风险 | 处理方式 |
+|--------|---------|---------|
+| 愿望输入（textarea） | ❌ 无 v-html，使用 `{{ wish.text }}` 文本插值 | ✅ Vue 自动转义 |
+| 留言输入（textarea） | ❌ 无 v-html，使用 `{{ msg.text }}` 文本插值 | ✅ Vue 自动转义 |
+| 餐厅添加（input） | ❌ 无 v-html，文本插值 | ✅ Vue 自动转义 |
+| 地图导航 | ⚠️ encodeURIComponent 处理后的 name 拼接 URL | ✅ 基本安全 |
+| 数据导入 JSON.parse | ⚠️ 解析用户上传文件，但仅读取数据结构 | ✅ 有格式校验 |
+
+**评价**：✅ 无 XSS 风险。所有用户输入都通过 Vue 模板插值 `{{ }}` 渲染，Vue 自动进行 HTML 转义。
+
+---
+
+### 四、移动端兼容性
+
+#### 4.1 iOS Safari 兼容性
+
+| 特性 | 使用位置 | iOS 支持 | 降级处理 |
+|------|---------|---------|---------|
+| `navigator.vibrate()` | useHaptics.js + 多个组件 | ❌ iOS 不支持 | ✅ `isIOS()` 检测跳过 |
+| `backdrop-filter` | main.css:245 (toast) | ✅ iOS 8+ | ✅ 有 `-webkit-backdrop-filter` 前缀 |
+| `scroll-snap-type` | main.css:537 (gallery) | ✅ iOS 11+ | ✅ 未加 `-webkit` 前缀，但 iOS 11+ 已支持标准属性 |
+| `CSS Grid` | 照片墙 grid | ✅ iOS 10.3+ | ✅ |
+| `env(safe-area-inset-bottom)` | main.css:70 | ✅ iOS 11+ | ✅ 有 fallback `0px` |
+
+**发现的问题：**
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| MC-01 | **`scroll-snap-type` 缺少 `-webkit-` 前缀**：`main.css:537` 使用的是标准 `scroll-snap-type`，但 iOS Safari 15 之前需要 `-webkit-scroll-snap-type`。不过 iOS Safari 15+ 已支持标准属性，考虑到目标用户 iOS 15+，风险较低 | P2 建议 |
+| MC-02 | **`Wish.vue:457` `-webkit-overflow-scrolling: touch` 在 iOS 13+ 已废弃**：该属性在 iOS 13+ 无效果，可移除 | P2 建议 |
+
+#### 4.2 PWA 配置
+
+| 配置项 | 状态 | 评价 |
+|--------|------|------|
+| manifest.json | ✅ 通过 VitePWA 插件自动生成 | ✅ |
+| 应用名称 | ✅ name/short_name 配置 | ✅ |
+| 主题色/背景色 | ✅ theme_color/background_color 配置 | ✅ |
+| 启动方式 | ✅ display: standalone | ✅ |
+| 图标 | ⚠️ 引用了 `pwa-192x192.png` 和 `pwa-512x512.png` 但**文件不存在** | P0 |
+
+**发现的问题：**
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| MC-03 | **PWA 图标文件缺失**：`vite.config.js:24-25` 配置了 `pwa-192x192.png` 和 `pwa-512x512.png`，但搜索整个项目（包括 `public/` 目录）均未找到这两个文件。这意味着 PWA 构建时会缺少图标，导致添加到主屏幕时使用默认占位图标 | **P0** |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P0
+[FEEDBACK] target: vite.config.js + public/
+[FEEDBACK] problem: vite-plugin-pwa 配置引用了 pwa-192x192.png 和 pwa-512x512.png，但这两个文件在项目中不存在
+[FEEDBACK] solution: 在 public/ 目录下放置至少 192x192 和 512x512 两个尺寸的 PNG 图标，或使用 VitePWA 的 includeAssets 指向现有资源
+```
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| MC-04 | **service worker 无 `notificationclick` 事件处理**：`vite.config.js` 使用 `workbox` 自动生成 SW，但没有配置 `notificationclick` 事件处理，意味着通知点击后无法跳转到对应页面 | P1 |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: vite.config.js
+[FEEDBACK] problem: vite-plugin-pwa 的 workbox 配置没有自定义 notificationclick 事件处理逻辑，通知点击后无法跳转到 App 内对应页面
+[FEEDBACK] solution: 增加 customServiceWorker 或通过 VitePWA 的 customServiceWorkerScript 配置 notificationclick 事件监听，从 data.url 获取目标页面路径并调用 clients.openWindow
+```
+
+#### 4.3 视口设置与安全区域
+
+| 设置 | 代码 | 评价 |
+|------|------|------|
+| viewport | ✅ `content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"` | ✅ 包含 `viewport-fit=cover` |
+| safe-area-inset-bottom | ✅ `--safe-bottom: env(safe-area-inset-bottom, 0px)` | ✅ |
+| TabBar 底部安全区域 | ✅ `height: calc(var(--tabbar-height) + var(--safe-bottom))` | ✅ |
+| 页面底部 padding | ✅ `padding-bottom: calc(var(--space-3xl) + var(--safe-bottom))` | ✅ |
+| 全屏模式 | ✅ `apple-mobile-web-app-capable: yes` | ✅ |
+| 状态栏样式 | ✅ `apple-mobile-web-app-status-bar-style: default` | ✅ |
+
+**评价**：✅ 视口和安全区域处理完整，所有页面都考虑了 safe-area。
+
+#### 4.4 其他移动端问题
+
+| # | 问题 | 严重程度 |
+|---|------|----------|
+| MC-05 | **未实现通知推送（Notification API 未调用）**：PRD 描述通知提醒需要 Notification API 和 Service Worker 配合，但代码中未调用 `Notification.requestPermission()` 或 `registration.showNotification()`。`Photo.vue` 的 `toggleNotification` 只是切换 `localStorage` 中的标记 | P1 |
+
+```
+[FEEDBACK] type: code_redo
+[FEEDBACK] severity: P1
+[FEEDBACK] target: src/views/Photo.vue
+[FEEDBACK] problem: 通知开关仅切换 localStorage 标记，未实际调用 Notification API 注册定时提醒
+[FEEDBACK] solution: 在 toggleNotification 中调用 Notification.requestPermission()，授权后使用 Service Worker registration.showNotification() 或 setInterval + new Notification() 实现定时提醒
+```
+
+---
+
+### 五、阶段三审核结论
+
+#### 关键发现汇总
+
+| 分类 | # | 严重程度 | 简述 |
+|------|---|----------|------|
+| 设计 | DCC-01 | P1 | 拍照流程：代码 4 状态 vs PRD 3 状态，需统一文档 |
+| 设计 | DCC-02 | P1 | 照片墙存储天数：DESIGN 7 天 vs PRD 14 天 vs 代码 14 天 |
+| 代码质量 | CQ-02 | P1 | Photo.vue `cameraState='opening'` 时按钮消失，UI 空白期 |
+| 代码质量 | CQ-03 | P2 | ConfirmDialog 组件未使用 |
+| Bug | BUG-01 | P1 | `autoCleanupStorage` 清理后未同步 state，数据不一致 |
+| Bug | BUG-02 | P1 | `getWeekDates()` 中 `isToday` 计算逻辑错误 |
+| Bug | BUG-03 | P1 | safeSetJSON 返回值未检查，写入静默失败 |
+| Bug | BUG-04 | P2 | toggleNotification 写入返回值未检查 |
+| Bug | BUG-05 | P2 | MessagesAdmin 缺少浏览器后退支持 |
+| 移动端 | MC-01 | P2 | scroll-snap-type 建议加 -webkit- 前缀 |
+| 移动端 | MC-02 | P2 | -webkit-overflow-scrolling:touch 在 iOS 13+ 已废弃 |
+| 移动端 | MC-03 | **P0** | PWA 图标文件（192x192, 512x512）缺失 |
+| 移动端 | MC-04 | P1 | service worker 无 notificationclick 事件处理 |
+| 移动端 | MC-05 | P1 | 通知开关未实际调用 Notification API |
+
+#### P0 问题（必须修复）
+
+1. **MC-03**: PWA 图标文件缺失 — `vite.config.js` 引用的 `pwa-192x192.png` 和 `pwa-512x512.png` 文件不存在
+
+#### P1 问题（需要修复）
+
+1. **CQ-02**: Photo.vue `opening` 状态无 UI 反馈，按钮空白期
+2. **BUG-01**: `autoCleanupStorage()` 清理后 state 与 localStorage 不同步
+3. **BUG-02**: `getWeekDates()` 中 `isToday` 计算逻辑错误
+4. **BUG-03**: `dataStore.js` 忽略 `safeSetJSON` 返回值
+5. **MC-04**: Service Worker 无 `notificationclick` 处理
+6. **MC-05**: 通知开关未调用 Notification API
+7. **DCC-01**: 拍照流程文档不一致
+8. **DCC-02**: 照片墙存储天数跨文档不一致
+
+#### 审核评分
+
+| 维度 | 评分 | 关键问题数 |
+|------|------|-----------|
+| 设计一致性 | 4/5 | 3 处不一致 |
+| 代码质量 | 4/5 | 3 个问题（1 P1 + 2 P2） |
+| Bug 检测 | 3/5 | 5 个 Bug（3 P1 + 2 P2） |
+| 移动端兼容性 | 3/5 | 5 个问题（1 P0 + 2 P1 + 2 P2） |
+
+**综合评价：** 代码整体质量良好，架构清晰（Vue 3 Composition API + 响应式 Store + 独立 Composables），CSS 变量体系完整，移动端 safe-area 处理到位。主要问题集中在：PWA 图标文件缺失（P0）、几个数据一致性的 Bug、以及通知功能的缺失实现。建议修复所有 P0/P1 问题后部署。
+
+---
+
+*本审核报告由审核/质量智能体自动生成*
+*审核日期：2026-07-03*

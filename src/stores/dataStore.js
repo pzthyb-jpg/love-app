@@ -50,7 +50,9 @@ const state = reactive({
 // 操作函数
 function addCheckin(record) {
   state.checkinHistory.unshift(record)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_HISTORY, state.checkinHistory), 'CHECKIN_HISTORY')
+  // 使用 IndexedDB 存储照片
+  savePhoto(record)
+  // safeSetJSON 的写入由 savePhoto 内部处理
 }
 
 function addWish(wish) {
