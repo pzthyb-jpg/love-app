@@ -697,6 +697,11 @@ onUnmounted(() => {
 /* 彩虹屁卡片 */
 .compliment-card {
   background: linear-gradient(135deg, var(--warm-pink), var(--cream));
+  animation: complimentGlow 2s ease-in-out infinite alternate;
+}
+@keyframes complimentGlow {
+  from { box-shadow: 0 2px 8px rgba(232, 117, 138, 0); }
+  to { box-shadow: 0 2px 16px rgba(232, 117, 138, 0.12); }
 }
 .compliment-header {
   font-size: var(--font-body-small);
@@ -740,12 +745,31 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   overflow: hidden;
   cursor: pointer;
+  background: var(--warm-pink);
+  animation: thumbFadeIn 0.35s ease both;
+}
+.photo-thumb:nth-child(1) { animation-delay: 0ms; }
+.photo-thumb:nth-child(2) { animation-delay: 40ms; }
+.photo-thumb:nth-child(3) { animation-delay: 80ms; }
+.photo-thumb:nth-child(4) { animation-delay: 120ms; }
+.photo-thumb:nth-child(5) { animation-delay: 160ms; }
+.photo-thumb:nth-child(6) { animation-delay: 200ms; }
+.photo-thumb:nth-child(7) { animation-delay: 240ms; }
+.photo-thumb:nth-child(8) { animation-delay: 280ms; }
+.photo-thumb:nth-child(9) { animation-delay: 320ms; }
+.photo-thumb:nth-child(n+10) { animation-delay: 360ms; }
+@keyframes thumbFadeIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
 }
 .photo-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition-fast);
+  transition: transform var(--transition-normal);
+}
+.photo-thumb:active {
+  transform: scale(0.92);
 }
 .photo-thumb:active img {
   transform: scale(1.05);

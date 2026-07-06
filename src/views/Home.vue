@@ -1,7 +1,12 @@
 <template>
   <div class="page home-page">
+    <!-- 漂浮爱心背景 -->
+    <div class="floating-hearts" aria-hidden="true">
+      <span v-for="i in 6" :key="i" class="float-heart" :style="getHeartStyle(i)">💕</span>
+    </div>
+
     <!-- 头部 -->
-    <div class="home-header">
+    <div class="home-header home-section" style="--card-delay: 0ms;">
       <div class="deco-bar">
         <span class="deco-dot"></span>
         <span class="deco-dot" style="background:var(--primary-light);opacity:0.4;"></span>
@@ -9,11 +14,14 @@
       </div>
       <h1 class="home-title" @click="handleTitleClick">💕 小皮爱情助手</h1>
       <span class="settings-icon" @click="goToSettings">⚙️</span>
-      <p class="home-subtitle">{{ girlfriendName ? girlfriendName + '的' : '' }}宝贝专属空间 ❤️</p>
+      <p class="home-subtitle">
+        <template v-if="girlfriendName">{{ girlfriendName }}的</template>
+       宝贝专属空间 ❤️
+      </p>
     </div>
 
     <!-- 爱的数据 -->
-    <div class="card love-data-card">
+    <div class="card love-data-card home-section" style="--card-delay: 80ms;">
       <div v-if="loveDays > 0" class="love-days-display">
         <div class="love-days-number" ref="daysRef">0</div>
         <div class="love-days-label">💖 在一起 第 <span ref="daysLabelRef">{{ loveDays }}</span> 天</div>
@@ -44,7 +52,7 @@
     </div>
 
     <!-- 今日状态 -->
-    <div class="card today-status-card">
+    <div class="card today-status-card home-section" style="--card-delay: 160ms;">
       <h3 class="card-title">📋 今日状态</h3>
       <div class="status-circles">
         <div class="status-circle" :class="{ done: todayCheckedIn, empty: !todayCheckedIn }" @click="goToTab(1)">
@@ -63,7 +71,7 @@
     </div>
 
     <!-- 来自他的话 -->
-    <div v-if="todayMessage" class="card message-preview-card" @click="goToTab(3)">
+    <div v-if="todayMessage" class="card message-preview-card home-section" style="--card-delay: 240ms;" @click="goToTab(3)">
       <div class="message-preview">
         <div class="message-avatar">💌</div>
         <div class="message-content">
@@ -74,7 +82,7 @@
     </div>
 
     <!-- 本周打卡 -->
-    <div class="card week-card">
+    <div class="card week-card home-section" style="--card-delay: 320ms;">
       <h3 class="card-title">📅 本周打卡</h3>
       <div class="week-dots">
         <div
@@ -259,6 +267,20 @@ function goToSettings() {
   router.push('/settings')
 }
 
+// 漂浮爱心随机样式
+function getHeartStyle(i) {
+  const left = 5 + Math.random() * 90
+  const delay = i * 1.2 + Math.random() * 2
+  const duration = 6 + Math.random() * 4
+  const size = 14 + Math.random() * 10
+  return {
+    left: `${left}%`,
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`,
+    fontSize: `${size}px`
+  }
+}
+
 function handleTitleClick() {
   titleClickCount++
   clearTimeout(titleClickTimer)
@@ -346,6 +368,57 @@ function saveAnniversary() {
 .deco-dot:nth-child(2) {
   width: 20px;
   border-radius: 3px;
+}
+
+/* === 首页入场动画 === */
+.home-section {
+  animation: cardSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--card-delay, 0ms);
+}
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === 漂浮爱心 === */
+.floating-hearts {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.float-heart {
+  position: absolute;
+  bottom: -30px;
+  opacity: 0;
+  animation: floatUp linear infinite;
+  filter: blur(0.5px);
+}
+@keyframes floatUp {
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0deg) scale(0.5);
+  }
+  10% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  90% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100vh) rotate(360deg) scale(1.2);
+  }
 }
 
 /* 爱的数据 */
@@ -443,6 +516,11 @@ function saveAnniversary() {
 }
 .status-circle.empty {
   background: var(--warm-pink);
+  animation: gentlePulse 2s ease-in-out infinite;
+}
+@keyframes gentlePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
 }
 .status-circle.has-new {
   background: linear-gradient(135deg, rgba(192, 132, 252, 0.3), rgba(192, 132, 252, 0.1));

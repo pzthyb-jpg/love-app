@@ -13,11 +13,27 @@
           <div class="setting-icon">🎂</div>
           <div class="setting-text">
             <div class="setting-label">纪念日</div>
-            <div class="setting-desc">我们在一起的那一天</div>
+            <div class="setting-desc" v-if="anniversary">我们在一起的那一天</div>
+            <div class="setting-desc" v-else>我们在一起的那一天</div>
           </div>
         </div>
         <div class="setting-action">
           <span class="date-display" @click="showDatePicker = true">{{ anniversary || '选择日期' }}</span>
+        </div>
+      </div>
+      <!-- 周年倒计时 -->
+      <div v-if="anniversary" class="anniversary-countdown">
+        <div class="countdown-row">
+          <span class="countdown-emoji">💖</span>
+          <span class="countdown-text">已在<strong>{{ loveDays }}</strong>天</span>
+        </div>
+        <div v-if="nextAnniversaryDays > 0" class="countdown-row">
+          <span class="countdown-emoji">🎊</span>
+          <span class="countdown-text">距<strong>{{ nextAnniversaryYear }}周年</strong>还有<strong>{{ nextAnniversaryDays }}</strong>天</span>
+        </div>
+        <div v-else-if="nextAnniversaryDays === 0" class="countdown-row countdown-today">
+          <span class="countdown-emoji">🎉</span>
+          <span class="countdown-text"><strong>今天是周年纪念日！</strong></span>
         </div>
       </div>
     </div>
@@ -164,9 +180,10 @@
 
 <script setup>
 import { showToast, showConfirmDialog } from 'vant'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { STORAGE_KEYS, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
+import { getLoveDays } from '../composables/useStreak.js'
 
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
 
@@ -178,6 +195,33 @@ const KEY_CUSTOM_REMINDER_TIME = 'custom_reminder_time'
 
 // 纪念日
 const anniversary = ref(state.loveAnniversary || '')
+
+// 在一起天数
+const loveDays = computed(() => getLoveDays(anniversary.value))
+
+// 距离下次周年天数
+const nextAnniversaryDays = computed(() => {
+  if (!anniversary.value) return -1
+  const anniv = new Date(anniversary.value)
+  const today = new Date()
+  const currentYear = today.getFullYear()
+  let next = new Date(currentYear, anniv.getMonth(), anniv.getDate())
+  if (next < today) {
+    next = new Date(currentYear + 1, anniv.getMonth(), anniv.getDate())
+  }
+  const diff = Math.ceil((next - today) / (1000 * 60 * 60 * 24))
+  return diff
+})
+
+const nextAnniversaryYear = computed(() => {
+  if (!anniversary.value) return 0
+  const anniv = new Date(anniversary.value)
+  const today = new Date()
+  let year = today.getFullYear() - anniv.getFullYear()
+  const next = new Date(today.getFullYear(), anniv.getMonth(), anniv.getDate())
+  if (next < today) year++
+  return year
+})
 
 // 日期选择器
 const showDatePicker = ref(false)
@@ -409,6 +453,35 @@ function clearAllData() {
   color: var(--text-secondary);
   flex-shrink: 0;
   margin-left: var(--space-md);
+}
+
+/* 倒计时区域 */
+.anniversary-countdown {
+  padding: var(--space-md) var(--space-xl) var(--space-lg);
+  background: linear-gradient(135deg, #FFF5F7, #FFF0F5);
+  border-top: 1px solid rgba(232, 117, 138, 0.1);
+}
+.countdown-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  font-size: var(--font-body-small);
+  color: var(--text-secondary);
+}
+.countdown-emoji {
+  font-size: 18px;
+}
+.countdown-text strong {
+  color: var(--primary);
+  font-weight: 700;
+}
+.countdown-today {
+  animation: gentlePulse 1.5s ease-in-out infinite;
+}
+.countdown-today .countdown-text strong {
+  color: var(--primary-dark);
+  font-size: var(--font-body);
 }
 
 .setting-divider {
