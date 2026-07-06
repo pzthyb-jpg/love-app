@@ -124,6 +124,7 @@ import { useDataStore } from '../stores/dataStore.js'
 import LunchWheel from '../components/LunchWheel.vue'
 import { getTodayStr } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
+import { launchConfetti } from '../utils/confetti.js'
 
 const { state, addLunchRecord, addRestaurant, removeRestaurant, resetRestaurants } = useDataStore()
 
@@ -205,6 +206,9 @@ function onSpinEnd(winner) {
   })
 
   hapticFeedback(null, HAPTIC_PATTERNS.SPIN_STOP)
+
+  // 🎊 彩纸庆祝
+  launchConfetti()
 }
 
 function closeResult() {

@@ -9,7 +9,7 @@
       </div>
       <h1 class="home-title" @click="handleTitleClick">💕 小皮爱情助手</h1>
       <span class="settings-icon" @click="goToSettings">⚙️</span>
-      <p class="home-subtitle">宝贝专属的甜蜜空间❤️</p>
+      <p class="home-subtitle">{{ girlfriendName ? girlfriendName + '的' : '' }}宝贝专属空间 ❤️</p>
     </div>
 
     <!-- 爱的数据 -->
@@ -133,6 +133,8 @@ import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorag
 
 const router = useRouter()
 const { state, setAnniversary } = useDataStore()
+
+const girlfriendName = computed(() => state.girlfriendName || '')
 
 const daysRef = ref(null)
 const showAnniversaryModal = ref(false)

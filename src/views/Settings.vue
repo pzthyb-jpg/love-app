@@ -168,7 +168,7 @@ import { ref, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { STORAGE_KEYS, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
 
-const { state } = useDataStore()
+const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
 
 // localStorage 键名（遵循 PRD.md 定义）
 const KEY_GIRLFRIEND_NAME = 'girlfriend_name'
@@ -222,12 +222,12 @@ onMounted(() => {
 })
 
 function onGirlfriendNameBlur() {
-  safeSetString(KEY_GIRLFRIEND_NAME, girlfriendName.value)
+  setGirlfriendName(girlfriendName.value)
   showToast({ message: '👧 昵称已保存', type: 'success' })
 }
 
 function onBoyfriendNameBlur() {
-  safeSetString(KEY_BOYFRIEND_NAME, boyfriendName.value || '泓博')
+  setBoyfriendName(boyfriendName.value || '泓博')
   showToast({ message: '👦 昵称已保存', type: 'success' })
 }
 

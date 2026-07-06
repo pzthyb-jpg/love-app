@@ -23,6 +23,8 @@ function checkWriteResult(success, key) {
 const state = reactive({
   checkinHistory: safeGetJSON(STORAGE_KEYS.CHECKIN_HISTORY, []),
   wishes: safeGetJSON(STORAGE_KEYS.WISHES, []),
+  girlfriendName: safeGetString('girlfriend_name', ''),
+  boyfriendName: safeGetString('boyfriend_name', '泓博'),
   restaurants: safeGetJSON(STORAGE_KEYS.RESTAURANTS, [
     { name: '饺子馆', emoji: '🥟', distance: '0.8km', rating: 4.5, tags: ['面食', '实惠'] },
     { name: '兰州拉面', emoji: '🍜', distance: '0.5km', rating: 4.2, tags: ['面食', '快餐'] },
@@ -177,6 +179,16 @@ function setAdminPassword(password) {
   })
 }
 
+function setGirlfriendName(name) {
+  state.girlfriendName = name
+  safeSetString('girlfriend_name', name)
+}
+
+function setBoyfriendName(name) {
+  state.boyfriendName = name
+  safeSetString('boyfriend_name', name)
+}
+
 export function useDataStore() {
   // 注册同步函数，供 autoCleanupStorage 清理后同步 state
   window.__syncCheckinHistory = (cleaned) => {
@@ -200,6 +212,8 @@ export function useDataStore() {
     addBadge,
     setAnniversary,
     setNotificationEnabled,
-    setAdminPassword
+    setAdminPassword,
+    setGirlfriendName,
+    setBoyfriendName
   }
 }

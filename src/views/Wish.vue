@@ -56,13 +56,14 @@
         <p>还没有{{ activeFilter === 'all' ? '' : '符合条件的' }}内容哦</p>
       </div>
       <div
-        v-for="wish in filteredWishes"
+        v-for="(wish, index) in filteredWishes"
         :key="wish.id"
         class="wish-bubble"
         :class="[
           wish.type === 'vent' ? 'vent' : 'wish',
           wish.fulfilled ? 'fulfilled' : ''
         ]"
+        :style="{ animationDelay: (index * 60) + 'ms' }"
         @touchstart.passive="onBubbleTouchStart($event, wish)"
         @touchend="onBubbleTouchEnd($event, wish)"
         @click="onBubbleClick(wish)"
@@ -566,7 +567,7 @@ function importData(event) {
 @keyframes bubbleIn {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.96);
+    transform: translateY(20px) scale(0.92);
   }
   to {
     opacity: 1;
