@@ -1,0 +1,243 @@
+/* ============================================================
+   小皮爱情助手 v2.0 — 动画系统
+   设计原则：克制、有质感、尊重系统动画设置
+   包含：fadeInUp / ripple / explosion
+   ============================================================ */
+
+/* === fadeInUp — 淡入上浮（常用于列表项、卡片入场） === */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.fade-in-up--fast {
+  animation-duration: 0.3s;
+}
+
+.fade-in-up--slow {
+  animation-duration: 0.7s;
+}
+
+/* Staggered 延迟（配合 JS 动态设置） */
+.fade-in-up[style*="--delay"] {
+  animation-delay: var(--delay);
+}
+
+
+/* === ripple — 水波纹（常用于按钮/卡片点击反馈） === */
+@keyframes ripple-expand {
+  0% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* ripple 容器需要 position: relative; overflow: hidden */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: ripple-expand 0.6s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* 浅色波纹（用于深色背景） */
+.ripple-effect--light {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* 深色波纹（用于浅色背景） */
+.ripple-effect--dark {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* 主色波纹 */
+.ripple-effect--primary {
+  background: rgba(232, 117, 138, 0.3);
+}
+
+
+/* === explosion — 爆炸扩散（常用于成就达成/庆祝） === */
+@keyframes explosion-burst {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(8);
+    opacity: 0;
+  }
+}
+
+.explosion {
+  animation: explosion-burst 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.explosion-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid var(--primary, #E8758A);
+  background: transparent;
+  animation: explosion-burst 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* 多环爆炸（延迟触发不同环） */
+.explosion-ring:nth-child(1) { animation-delay: 0s; }
+.explosion-ring:nth-child(2) { animation-delay: 0.1s; opacity: 0.7; }
+.explosion-ring:nth-child(3) { animation-delay: 0.2s; opacity: 0.4; }
+
+
+/* === 组合动画：爆炸粒子 === */
+@keyframes explosion-particle {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx, 50px), var(--ty, -50px)) scale(0);
+    opacity: 0;
+  }
+}
+
+.explosion-particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: explosion-particle 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+
+/* === 通用动画工具类 === */
+
+/* Fade */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Slide Down */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-down {
+  animation: slideDown 0.3s ease forwards;
+}
+
+/* Scale In */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Pulse（心跳） */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.pulse {
+  animation: pulse 0.6s ease-in-out;
+}
+
+/* Shake（摇晃，常用于错误提示） */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+
+/* === 动画时长工具类 === */
+.anim-duration-fast { animation-duration: 0.2s !important; }
+.anim-duration-normal { animation-duration: 0.4s !important; }
+.anim-duration-slow { animation-duration: 0.7s !important; }
+
+/* 动画延迟工具类 */
+.anim-delay-1 { animation-delay: 0.1s; }
+.anim-delay-2 { animation-delay: 0.2s; }
+.anim-delay-3 { animation-delay: 0.3s; }
+.anim-delay-4 { animation-delay: 0.4s; }
+.anim-delay-5 { animation-delay: 0.5s; }
+
+/* 动画填充模式 */
+.anim-fill-both { animation-fill-mode: both; }
+.anim-fill-forwards { animation-fill-mode: forwards; }
+
+/* 无限循环 */
+.anim-infinite { animation-iteration-count: infinite; }
+
+/* 动画暂停/播放 */
+.anim-paused { animation-play-state: paused; }
+.anim-running { animation-play-state: running; }
+
+
+/* === 无障碍：尊重系统动画设置 === */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up,
+  .ripple-effect,
+  .explosion,
+  .explosion-ring,
+  .explosion-particle,
+  .fade-in,
+  .slide-down,
+  .scale-in,
+  .pulse,
+  .shake {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
