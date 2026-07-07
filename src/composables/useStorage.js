@@ -217,7 +217,7 @@ async function getPhotos(dateStrs) {
           req.onerror = (e) => reject(e.target.error)
         })
         if (result && result.photo) {
-          photoMap.set(date, result.photo)
+          photoMap.set(item.date, result.photo)
         }
       }
       db.close()
