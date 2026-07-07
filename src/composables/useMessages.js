@@ -78,7 +78,7 @@ function getDefaultMessages() {
       id: 1,
       text: '早安宝贝！今天也要开心哦❤️',
       type: 'morning',
-      author: '泓博',
+      author: '男朋友',
       createdAt: new Date().toISOString().slice(0, 10),
       displayedDates: [],
       specialCondition: null
@@ -87,7 +87,7 @@ function getDefaultMessages() {
       id: 2,
       text: '宝，今天打卡了吗？想看看你😘',
       type: 'random',
-      author: '泓博',
+      author: '男朋友',
       createdAt: new Date().toISOString().slice(0, 10),
       displayedDates: [],
       specialCondition: null
@@ -96,7 +96,7 @@ function getDefaultMessages() {
       id: 3,
       text: '晚安我的宝！今天辛苦了，好好休息💤',
       type: 'evening',
-      author: '泓博',
+      author: '男朋友',
       createdAt: new Date().toISOString().slice(0, 10),
       displayedDates: [],
       specialCondition: null

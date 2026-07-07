@@ -7,9 +7,10 @@ import {
   safeSetJSON,
   safeGetString,
   safeSetString,
-  savePhoto
+  savePhoto,
+  setSyncCheckinHistoryCallback
 } from '../composables/useStorage.js'
-import { DEFAULT_PWD_HASH, isHashFormat, hashString } from '../composables/usecrypto.js'
+import { hashPassword, verifyPassword, validatePasswordStrength, isLegacyHashFormat } from '../composables/usecrypto.js'
 
 // 检查写入结果，失败时弹出 Toast 提示
 function checkWriteResult(success, key) {
@@ -24,7 +25,7 @@ const state = reactive({
   checkinHistory: safeGetJSON(STORAGE_KEYS.CHECKIN_HISTORY, []),
   wishes: safeGetJSON(STORAGE_KEYS.WISHES, []),
   girlfriendName: safeGetString('girlfriend_name', ''),
-  boyfriendName: safeGetString('boyfriend_name', '泓博'),
+  boyfriendName: safeGetString('boyfriend_name', '男朋友'),
   restaurants: safeGetJSON(STORAGE_KEYS.RESTAURANTS, [
     { name: '饺子馆', emoji: '🥟', distance: '0.8km', rating: 4.5, tags: ['面食', '实惠'] },
     { name: '兰州拉面', emoji: '🍜', distance: '0.5km', rating: 4.2, tags: ['面食', '快餐'] },
@@ -48,36 +49,54 @@ const state = reactive({
   checkinBadges: safeGetJSON(STORAGE_KEYS.CHECKIN_BADGES, []),
   loveAnniversary: safeGetString(STORAGE_KEYS.LOVE_ANNIVERSARY, ''),
   notificationEnabled: safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true',
-  adminPassword: safeGetPassword()
+  // 密码哈希值（PBKDF2-SHA256 格式）
+  adminPassword: { hash: '', salt: '', legacyHash: '' }
 })
 
-// 读取密码，自动迁移旧格式（明文 → 哈希）
+// 读取密码：新格式 { hash, salt } 字符串，或旧 SHA-256 迁移
 function safeGetPassword() {
   const stored = safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, '')
   if (!stored) {
-    // 无密码时使用默认哈希
-    return DEFAULT_PWD_HASH
+    // 首次使用：返回空，需要管理员自行设置密码
+    return { hash: '', salt: '', legacyHash: '' }
   }
-  if (isHashFormat(stored)) {
-    return stored
+  // 尝试解析新格式：Base64_salt.Base64_hash
+  if (stored.includes('.')) {
+    const parts = stored.split('.')
+    if (parts.length === 2) {
+      return { hash: parts[1], salt: parts[0], legacyHash: '' }
+    }
   }
-  // 旧格式：明文密码，需要迁移
-  // 异步哈希并保存，同步返回默认哈希
-  hashString(stored).then(hash => {
-    safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, hash)
-    state.adminPassword = hash
-  }).catch(() => {
-    // 降级：保留原值
-  })
-  return DEFAULT_PWD_HASH
+  // 检测到 old SHA-256 格式（旧哈希，需要迁移）
+  if (isLegacyHashFormat(stored)) {
+    // 异步将旧哈希升级到 PBKDF2
+    const defaultSalt = new Uint8Array(16)
+    for (let i = 0; i < 16; i++) defaultSalt[i] = i // 固定盐，待首次登录后替换
+    hashPassword(stored, defaultSalt).then(({ hash, salt }) => {
+      const newFormat = `${salt}.${hash}`
+      safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, newFormat)
+      state.adminPassword = { hash, salt, legacyHash: '' }
+    }).catch(() => {
+      // 无法升级时抛出错误，不再保留明文或旧格式
+      console.error('密码哈希升级失败')
+    })
+    return { hash: '', salt: '', legacyHash: stored }
+  }
+  return { hash: '', salt: '', legacyHash: '' }
 }
+
+// 初始化密码状态
+state.adminPassword = safeGetPassword()
+
+// 自动清理存储回调：安全替代 window.__syncCheckinHistory
+setSyncCheckinHistoryCallback((cleaned) => {
+  state.checkinHistory = cleaned
+})
 
 // 操作函数
 function addCheckin(record) {
   state.checkinHistory.unshift(record)
-  // 使用 IndexedDB 存储照片
   savePhoto(record)
-  // safeSetJSON 的写入由 savePhoto 内部处理
 }
 
 function addWish(wish) {
@@ -147,6 +166,21 @@ function deleteMessage(id) {
   checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
 }
 
+/**
+ * 标记某条消息在指定日期已展示
+ * 更新 displayedDates 并持久化到 localStorage
+ */
+function markMessageDisplayed(messageId, dateStr) {
+  const msg = state.messages.find(m => m.id === messageId)
+  if (msg) {
+    if (!msg.displayedDates) msg.displayedDates = []
+    if (!msg.displayedDates.includes(dateStr)) {
+      msg.displayedDates.push(dateStr)
+      checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
+    }
+  }
+}
+
 function updateStreak(streakData) {
   Object.assign(state.checkinStreak, streakData)
   checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_STREAK, state.checkinStreak), 'CHECKIN_STREAK')
@@ -167,16 +201,50 @@ function setNotificationEnabled(enabled) {
   safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, enabled ? 'true' : 'false')
 }
 
-function setAdminPassword(password) {
-  // 存储前进行哈希（密码被哈希后存入 localStorage）
-  hashString(password).then(hash => {
-    state.adminPassword = hash
-    safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, hash)
-  }).catch(() => {
-    // 降级：如果 SubtleCrypto 不可用，直接存储
-    state.adminPassword = password
-    safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, password)
-  })
+async function setAdminPassword(password) {
+  const validation = validatePasswordStrength(password)
+  if (!validation.valid) {
+    showToast({ message: validation.message, type: 'fail' })
+    return false
+  }
+  try {
+    const { hash, salt } = await hashPassword(password)
+    const storedFormat = `${salt}.${hash}`
+    state.adminPassword = { hash, salt, legacyHash: '' }
+    safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, storedFormat)
+    return true
+  } catch (e) {
+    showToast({ message: '密码设置失败：环境不支持 SubtleCrypto', type: 'fail' })
+    return false
+  }
+}
+
+/**
+ * 验证管理员密码
+ * - 新 PBKDF2 格式：对比 salt + hash
+ * - 旧 SHA-256 遗留格式：一次登录成功后自动迁移
+ */
+async function verifyAdminPassword(password) {
+  const pwd = state.adminPassword
+  // 新格式验证
+  if (pwd.hash && pwd.salt) {
+    const matched = await verifyPassword(password, pwd.hash, pwd.salt)
+    return matched
+  }
+  // 旧格式：尝试旧 SHA-256 对比，成功后立即迁移
+  if (pwd.legacyHash) {
+    // 把旧 SHA-256 哈希当作明文再次哈希入库（等效迁移）
+    const encoder = new TextEncoder()
+    const data = encoder.encode(password)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+    if (hashHex === pwd.legacyHash) {
+      // 旧格式验证成功，立即升级到 PBKDF2
+      await setAdminPassword(password)
+      return true
+    }
+  }
+  return false
 }
 
 function setGirlfriendName(name) {
@@ -190,11 +258,6 @@ function setBoyfriendName(name) {
 }
 
 export function useDataStore() {
-  // 注册同步函数，供 autoCleanupStorage 清理后同步 state
-  window.__syncCheckinHistory = (cleaned) => {
-    state.checkinHistory = cleaned
-  }
-
   return {
     state,
     addCheckin,
@@ -208,11 +271,13 @@ export function useDataStore() {
     addMessage,
     updateMessage,
     deleteMessage,
+    markMessageDisplayed,
     updateStreak,
     addBadge,
     setAnniversary,
     setNotificationEnabled,
     setAdminPassword,
+    verifyAdminPassword,
     setGirlfriendName,
     setBoyfriendName
   }

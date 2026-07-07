@@ -125,6 +125,7 @@ import LunchWheel from '../components/LunchWheel.vue'
 import { getTodayStr } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 import { launchConfetti } from '../utils/confetti.js'
+import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
 
 const { state, addLunchRecord, addRestaurant, removeRestaurant, resetRestaurants } = useDataStore()
 
@@ -133,17 +134,24 @@ const showManage = ref('manage')
 const newRestaurantName = ref('')
 const showResult = ref(false)
 const resultRestaurant = ref(null)
-const excludedList = ref([])
+// 持久化 excludedList（使用 useStorage 的 safeGetJSON/safeSetJSON）
+const excludedList = ref(safeGetExcludedList())
 const favorites = ref(safeGetFavorites())
 
+function safeGetExcludedList() {
+  return safeGetJSON(STORAGE_KEYS.EXCLUDED_RESTAURANTS, [])
+}
+
+function safeSaveExcludedList(arr) {
+  safeSetJSON(STORAGE_KEYS.EXCLUDED_RESTAURANTS, arr)
+}
+
 function safeGetFavorites() {
-  try {
-    return JSON.parse(localStorage.getItem('favorite_restaurants') || '[]')
-  } catch { return [] }
+  return safeGetJSON(STORAGE_KEYS.FAVORITE_RESTAURANTS, [])
 }
 
 function safeSaveFavorites(arr) {
-  try { localStorage.setItem('favorite_restaurants', JSON.stringify(arr)) } catch {}
+  safeSetJSON(STORAGE_KEYS.FAVORITE_RESTAURANTS, arr)
 }
 
 // 餐厅列表（排除已排除的）
@@ -223,6 +231,7 @@ function confirmResult() {
 function spinAgainExclude() {
   if (resultRestaurant.value) {
     excludedList.value.push(resultRestaurant.value.name)
+    safeSaveExcludedList(excludedList.value)
   }
   showResult.value = false
   resultRestaurant.value = null

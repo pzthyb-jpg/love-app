@@ -334,5 +334,14 @@ img {
   z-index: 9999;
 }
 
+/* 无障碍：尊重系统动画设置 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* === 过渡保留（Vant 替换前） === */
 /* 后续逐步移到 Vant 组件中 */

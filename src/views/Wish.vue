@@ -66,8 +66,8 @@
         :style="{ animationDelay: (index * 60) + 'ms' }"
         @touchstart.passive="onBubbleTouchStart($event, wish)"
         @touchend="onBubbleTouchEnd($event, wish)"
-        @click="onBubbleClick(wish)"
       >
+        <div v-if="longPressProgress > 0" class="bubble-progress-ring" :style="{ '--progress': longPressProgress }"></div>
         <div class="bubble-deco">
           <span v-if="wish.type === 'wish' && !wish.fulfilled">⭐</span>
           <span v-else-if="wish.type === 'vent'">⚡</span>
@@ -86,11 +86,11 @@
     <!-- 数据导出/导入 -->
     <div class="card data-actions-card">
       <div class="data-actions">
-        <van-button plain size="small" @click="exportData">
-          💾 导出备份
+        <van-button plain size="small" @click="exportData" aria-label="导出数据">
+          📤 导出
         </van-button>
-        <van-button plain size="small" @click="triggerImport">
-          📥 导入恢复
+        <van-button plain size="small" @click="triggerImport" aria-label="导入数据">
+          📥 导入
         </van-button>
         <input
           ref="importInputRef"
@@ -139,11 +139,30 @@
       close-on-click-action
       cancel-text="取消"
     />
+
+    <!-- 标记实现弹窗 -->
+    <Teleport to="body">
+      <div v-if="showFulfillDialog" class="dialog-overlay" @click.self="showFulfillDialog = false">
+        <div class="dialog-box fulfill-dialog">
+          <div class="fulfill-emoji">🎉</div>
+          <h3>愿望要实现了哦～</h3>
+          <p class="fulfill-label">实现的人是 ___</p>
+          <van-field v-model="fulfillName" placeholder="输入姓名" maxlength="20" class="fulfill-input" />
+          <div class="fulfill-emoji-row">
+            <span v-for="emoji in ['💖','💕','💝','💘','💗']" :key="emoji" class="fulfill-emoji-item" :class="{ selected: fulfillEmoji === emoji }" @click="fulfillEmoji = emoji">{{ emoji }}</span>
+          </div>
+          <div class="dialog-actions">
+            <van-button type="default" @click="showFulfillDialog = false">取消</van-button>
+            <van-button type="primary" @click="confirmFulfill">确认 ✨</van-button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { showToast, showConfirmDialog } from 'vant'
+import { showToast, showConfirmDialog, showDialog } from 'vant'
 import { ref, computed } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { getTodaysMessage, formatMessageText } from '../composables/useMessages.js'
@@ -161,6 +180,13 @@ const selectedWish = ref(null)
 const importInputRef = ref(null)
 const bubbleAreaRef = ref(null)
 
+// 标记实现弹窗
+const showFulfillDialog = ref(false)
+const fulfillName = ref('')
+const fulfillEmoji = ref('💖')
+
+// 长按进度
+const longPressProgress = ref(0)
 let longPressTimer = null
 let isLongPress = false
 
@@ -260,20 +286,35 @@ function submitEntry(type) {
   showToast({ message: type === 'wish' ? '✨ 愿望已许下！' : '😤 吐槽已记录！', type: 'success' })
 }
 
-// 长按检测
+// 长按检测（带进度环）
 function onBubbleTouchStart(event, wish) {
   isLongPress = false
-  longPressTimer = setTimeout(() => {
-    isLongPress = true
-    selectedWish.value = wish
-    showActionMenu.value = true
-    hapticFeedback(null, HAPTIC_PATTERNS.LIGHT)
-  }, 500)
+  longPressProgress.value = 0
+  let elapsed = 0
+  const startTime = Date.now()
+  
+  longPressTimer = setInterval(() => {
+    elapsed = Date.now() - startTime
+    longPressProgress.value = Math.min(elapsed / 500, 1)
+    if (elapsed >= 500) {
+      clearInterval(longPressTimer)
+      isLongPress = true
+      selectedWish.value = wish
+      showActionMenu.value = true
+      longPressProgress.value = 0
+      hapticFeedback(null, HAPTIC_PATTERNS.LIGHT)
+    }
+  }, 16)
 }
 
 function onBubbleTouchEnd(event, wish) {
-  clearTimeout(longPressTimer)
-  // 如果已经触发了长按菜单，不再触点击
+  if (longPressTimer) {
+    clearInterval(longPressTimer)
+    longPressTimer = null
+  }
+  if (!isLongPress) {
+    longPressProgress.value = 0
+  }
 }
 
 function onBubbleClick(wish) {
@@ -287,16 +328,25 @@ function onBubbleClick(wish) {
 function closeActionMenu() {
   selectedWish.value = null
 }
-
+// 标记已实现
 function markAsFulfilled() {
   if (!selectedWish.value) return
-  const name = prompt('谁实现的？(可选)') || '男朋友'
+  fulfillName.value = ''
+  fulfillEmoji.value = '💖'
+  showFulfillDialog.value = true
+}
+
+function confirmFulfill() {
+  if (!selectedWish.value) return
+  const name = fulfillName.value.trim() || '男朋友'
   updateWish(selectedWish.value.id, {
     fulfilled: true,
-    fulfilledBy: name
+    fulfilledBy: name,
+    fulfilledEmoji: fulfillEmoji.value
   })
   hapticFeedback(null, HAPTIC_PATTERNS.ACHIEVEMENT)
   showToast({ message: '🎉 愿望已标记为实现！', type: 'success' })
+  showFulfillDialog.value = false
   closeActionMenu()
 }
 
@@ -656,6 +706,95 @@ function importData(event) {
   display: flex;
   justify-content: center;
   gap: var(--space-lg);
+}
+
+/* 长按进度环 */
+.bubble-progress-ring {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: conic-gradient(var(--primary) calc(var(--progress, 0) * 360deg), transparent 0);
+  z-index: 10;
+  pointer-events: none;
+}
+.bubble-progress-ring::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+}
+
+/* 标记实现弹窗 */
+.fulfill-dialog {
+  text-align: center;
+}
+.fulfill-emoji {
+  font-size: 48px;
+  margin-bottom: var(--space-sm);
+}
+.fulfill-label {
+  font-size: var(--font-body-small);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+.fulfill-input {
+  margin-bottom: var(--space-md);
+}
+.fulfill-emoji-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.fulfill-emoji-item {
+  font-size: 28px;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+  opacity: 0.5;
+}
+.fulfill-emoji-item.selected {
+  transform: scale(1.3);
+  opacity: 1;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog-box {
+  background: var(--cream);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  max-width: 340px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.dialog-box h3 {
+  font-size: var(--font-h3);
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+  text-align: center;
 }
 
 /* 移动端适配 */

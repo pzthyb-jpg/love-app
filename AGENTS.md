@@ -347,6 +347,9 @@ love-app/
 ├── CHECKPOINT.md            ← 流水线状态检查点
 ├── README.md                ← 项目说明（面向人类）
 ├── src/                     ← 源代码
+├── scripts/                 ← 工具脚本
+│   ├── ux-writing-lint.cjs  ← UX 文案 linter
+│   └── check-text-consistency.cjs ← 文案一致性检查
 ├── docs/
 │   ├── design-docs/
 │   │   ├── RESEARCH.md      ← 竞品分析
@@ -367,6 +370,7 @@ love-app/
 │   ├── LESSONS.md           ← 经验沉淀
 │   ├── PROCESS.md           ← 流水线协议
 │   ├── SECURITY.md          ← 安全策略
+│   ├── UX_WRITING_QA.md     ← UX 文案质量审核规范
 │   └── CROSS_COMPARISON.md  ← 与 OpenAI 文章比对
 ├── package.json
 └── vite.config.js

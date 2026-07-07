@@ -19,7 +19,17 @@
           <p>正在打开摄像头...</p>
         </div>
         <video v-else-if="cameraState === 'ready'" ref="videoRef" class="video-preview" autoplay playsinline></video>
-        <img v-else-if="capturedPhoto" :src="capturedPhoto" class="photo-preview" />
+        <img v-else-if="capturedPhoto && cameraState === 'captured'" :src="capturedPhoto" class="photo-preview" />
+        <div v-else-if="cameraState === 'preview'" class="preview-container">
+          <img :src="capturedPhoto" class="photo-preview" />
+          <div class="preview-overlay">
+            <div class="preview-compliment">"{{ compliment }}"</div>
+            <div class="preview-actions">
+              <van-button type="default" @click="retakePhoto">📸 重拍</van-button>
+              <van-button type="primary" @click="confirmPhoto">✅ 确认打卡</van-button>
+            </div>
+          </div>
+        </div>
         <div v-else class="preview-placeholder">
           <span class="placeholder-icon">📸</span>
           <p>点击下方按钮开始拍照</p>
@@ -78,7 +88,7 @@
         </div>
       </div>
       <div v-if="selectedReminderTime === 'custom'" class="reminder-custom-time">
-        <input type="time" v-model="customReminderTime" class="input time-input" @change="scheduleReminder" />
+        <input type="time" v-model="customReminderTime" class="input time-input" @change="onCustomTimeChange" />
       </div>
       <p v-if="reminderScheduled" class="reminder-status">
         ✅ 下次提醒 {{ nextReminderText }}
@@ -141,18 +151,10 @@
       </div>
     </div>
 
-    <!-- 通知开关 -->
-    <div class="card notification-card">
-      <div class="notification-toggle">
-        <span>⏰ 中午打卡提醒</span>
-        <van-switch v-model="notifEnabled" @change="onToggleNotification" />
-      </div>
-    </div>
-
     <!-- 全屏照片浏览 -->
     <Teleport to="body">
-      <div v-if="galleryOpen" class="gallery-overlay" @click.self="closeGallery">
-        <div class="gallery-close" @click="closeGallery">✕</div>
+    <div v-if="galleryOpen" class="gallery-overlay" @click.self="closeGallery">
+        <div class="gallery-close" @click="closeGallery" role="button" aria-label="关闭">✕</div>
         <van-swipe ref="gallerySwipeRef" :loop="false" :show-indicators="true" class="gallery-swipe">
           <van-swipe-item v-for="(item, idx) in galleryPhotos" :key="idx" class="gallery-slide">
             <img :src="item.photo" :alt="item.date" />
@@ -162,6 +164,25 @@
             </div>
           </van-swipe-item>
         </van-swipe>
+      </div>
+    </Teleport>
+
+    <!-- 摄像头权限引导弹窗 -->
+    <Teleport to="body">
+      <div v-if="showCameraGuide" class="dialog-overlay" @click.self="showCameraGuide = false">
+        <div class="dialog-box camera-guide-box">
+          <div class="camera-guide-emoji">📸</div>
+          <h3>需要摄像头权限才能哦</h3>
+          <p class="camera-guide-desc">在系统设置中允许本应用使用摄像头</p>
+          <div class="camera-guide-steps">
+            <p>iPhone: 设置 → 隐私 → 相机 → 找到本应用</p>
+            <p>Android: 设置 → 应用 → 权限 → 相机</p>
+          </div>
+          <div class="camera-guide-actions">
+            <van-button type="default" @click="showCameraGuide = false">知道了</van-button>
+            <van-button type="primary" @click="openAppSettings">前往设置</van-button>
+          </div>
+        </div>
       </div>
     </Teleport>
 
@@ -187,6 +208,7 @@ import { useDataStore } from '../stores/dataStore.js'
 import { getTodayStr, formatDate, calculateStreak, checkMilestone, getNextMilestone, BADGE_DEFINITIONS } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 import { safeGetJSON, safeSetJSON, safeGetString, safeSetString, STORAGE_KEYS, getPhotos } from '../composables/useStorage.js'
+import { useReminder } from '../composables/useReminder.js'
 
 const { state, addCheckin, updateStreak, addBadge } = useDataStore()
 
@@ -195,10 +217,16 @@ const previewRef = ref(null)
 const gallerySwipeRef = ref(null)
 
 // 摄像头状态
-const cameraState = ref('idle')  // idle | opening | ready | captured
+const cameraState = ref('idle')  // idle | opening | ready | captured | preview
 const capturedPhoto = ref(null)
 const compliment = ref('')
 let mediaStream = null
+
+// 摄像头权限拒绝引导
+const showCameraGuide = ref(false)
+
+// 操作菜单 - Vant ActionSheet
+const showRetakeMenu = ref(false)
 
 // 画廊
 const galleryOpen = ref(false)
@@ -208,26 +236,8 @@ const galleryPhotos = ref([])
 const showCelebration = ref(false)
 const newBadge = ref(null)
 
-const notifEnabled = ref(
-  safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true'
-)
-
-// ===== 提醒设置 =====
-const KEY_REMINDER_TIME = 'reminder_time'
-const KEY_CUSTOM_REMINDER_TIME = 'custom_reminder_time'
-
-const selectedReminderTime = ref(safeGetString(KEY_REMINDER_TIME, 'noon'))
-const customReminderTime = ref(safeGetString(KEY_CUSTOM_REMINDER_TIME, '12:00'))
-const reminderScheduled = ref(false)
-const nextReminderText = ref('')
-let reminderTimer = null
-
-// 提醒时间映射（时、分）
-const REMINDER_TIME_MAP = {
-  noon: [12, 0],
-  afternoon: [15, 0],
-  evening: [18, 0]
-}
+// 使用 useReminder composable
+const { notifEnabled, reminderTime: selectedReminderTime, customReminderTime, reminderScheduled, nextReminderText, onToggleNotification, onReminderTimeChange, onCustomTimeChange, scheduleReminder, cancelReminder } = useReminder()
 
 // 今日日期
 const todayDisplay = computed(() => {
@@ -412,12 +422,13 @@ async function openCamera() {
     }
     cameraState.value = 'ready'
   } catch (e) {
-    showToast({ message: '😢 无法打开摄像头，请检查权限设置', type: 'fail' })
     cameraState.value = 'idle'
+    // 显示权限引导弹窗
+    showCameraGuide.value = true
   }
 }
 
-// 拍照
+// 拍照 - 进入预览状态
 function takePhoto() {
   if (!videoRef.value) return
   const canvas = document.createElement('canvas')
@@ -428,15 +439,39 @@ function takePhoto() {
   ctx.scale(-1, 1)  // 镜像翻转
   ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height)
   capturedPhoto.value = canvas.toDataURL('image/jpeg', 0.7)
-  cameraState.value = 'captured'
+  compliment.value = generateCompliment()
+  cameraState.value = 'preview'
   hapticFeedback(null, HAPTIC_PATTERNS.SHUTTER)
+  // 关闭摄像头流（不停止摄像头设备，方便重拍）
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop())
+    mediaStream = null
+  }
 }
 
 // 再拍一张
 function retakePhoto() {
+  cameraState.value = 'opening'
   capturedPhoto.value = null
   compliment.value = ''
-  cameraState.value = 'ready'
+  // 重新打开摄像头
+  openCamera()
+}
+
+// 打开应用设置页面
+function openAppSettings() {
+  showCameraGuide.value = false
+  // 尝试打开系统设置（iOS Safari/Android Chrome不支持直接跳转权限页面）
+  // 显示操作指引
+  if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+    window.open('app-settings:', '_self')
+  } else if (navigator.userAgent.match(/Android/i)) {
+    window.open('package:' + location.host, '_self')
+  }
+  // 如果无法打开，提示手动操作
+  setTimeout(() => {
+    showToast({ message: '请手动打开系统设置 > 应用 > 权限', type: 'fail' })
+  }, 500)
 }
 
 // 确认照片
@@ -515,108 +550,7 @@ function dismissCelebration() {
   newBadge.value = null
 }
 
-function onToggleNotification(val) {
-  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, val ? 'true' : 'false')
-  if (val) {
-    // 请求通知权限并发送测试通知
-    if ('Notification' in window) {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          new Notification('💕 小皮爱情助手', {
-            body: '中午打卡提醒已开启，每天都会提醒你哦～',
-            icon: './pwa-192x192.png'
-          })
-        }
-      })
-    }
-    scheduleReminder()
-  } else {
-    cancelReminder()
-  }
-  showToast({ message: val ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
-}
-
-// ===== 提醒调度 =====
-
-function scheduleReminder() {
-  cancelReminder()
-  if (!notifEnabled.value) return
-
-  // 请求通知权限
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission()
-  }
-
-  const now = new Date()
-  let targetHour, targetMinute
-
-  if (selectedReminderTime.value === 'custom') {
-    const parts = (customReminderTime.value || '12:00').split(':')
-    targetHour = parseInt(parts[0])
-    targetMinute = parseInt(parts[1])
-  } else {
-    const time = REMINDER_TIME_MAP[selectedReminderTime.value] || REMINDER_TIME_MAP.noon
-    targetHour = time[0]
-    targetMinute = time[1]
-  }
-
-  const target = new Date()
-  target.setHours(targetHour, targetMinute, 0, 0)
-
-  // 如果已过今日提醒时间，设为明天
-  if (target <= now) {
-    target.setDate(target.getDate() + 1)
-  }
-
-  const msUntilTarget = target.getTime() - now.getTime()
-
-  // 计算下次提醒文本
-  const days = target.getDate() !== now.getDate() ? '明天 ' : ''
-  nextReminderText.value = `${days}${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}`
-  reminderScheduled.value = true
-
-  reminderTimer = setTimeout(() => {
-    if (!notifEnabled.value) return
-    // 发送浏览器通知
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('📸 拍照打卡提醒', {
-        body: '宝贝，该拍照打卡啦！想看看你今天的样子 ❤️',
-        icon: '📸'
-      })
-    }
-    // 即使通知被拒绝，也内部提醒（通过 Toast）
-    showToast({ message: '📸 该拍照打卡啦！' })
-    // 安排明天的提醒
-    scheduleReminder()
-  }, msUntilTarget)
-}
-
-function cancelReminder() {
-  if (reminderTimer) {
-    clearTimeout(reminderTimer)
-    reminderTimer = null
-  }
-  reminderScheduled.value = false
-  nextReminderText.value = ''
-}
-
-function onReminderTimeChange() {
-  safeSetString(KEY_REMINDER_TIME, selectedReminderTime.value)
-  if (selectedReminderTime.value !== 'custom') {
-    safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
-    scheduleReminder()
-    showToast({ message: '🕐 提醒时间已更新', type: 'success' })
-  }
-}
-
-function onCustomTimeChange() {
-  safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
-  scheduleReminder()
-  showToast({ message: '🕐 提醒时间已更新', type: 'success' })
-}
-
-// 安全读取辅助（已从 useStorage 导入 safeGetString/safeSetString）
-// 保留内联版本作为兼容兜底
+// 安全读取辅助（保留兼容）
 onMounted(() => {
   // 不自动请求通知权限 — 由用户操作触发（onToggleNotification）
   // 仅读取通知状态，如果已开启则调度定时器
@@ -654,6 +588,63 @@ onUnmounted(() => {
   justify-content: center;
   margin-bottom: var(--space-lg);
   border: 2px solid rgba(232, 117, 138, 0.15);
+  position: relative;
+}
+.preview-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.preview-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  padding: var(--space-lg);
+  color: white;
+}
+.preview-compliment {
+  font-size: var(--font-body);
+  line-height: 1.5;
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
+.preview-actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+}
+
+/* 摄像头权限引导弹窗 */
+.camera-guide-box {
+  text-align: center;
+}
+.camera-guide-emoji {
+  font-size: 48px;
+  margin-bottom: var(--space-sm);
+}
+.camera-guide-desc {
+  font-size: var(--font-body-small);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+}
+.camera-guide-steps {
+  text-align: left;
+  background: var(--warm-pink);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-lg);
+}
+.camera-guide-steps p {
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.camera-guide-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
 }
 .video-preview,
 .photo-preview {

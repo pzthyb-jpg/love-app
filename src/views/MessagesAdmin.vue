@@ -9,23 +9,20 @@
     <!-- 密码验证 -->
     <div v-if="!isAuthenticated" class="card password-card">
       <h3 class="card-title" style="text-align:center">🔐 请输入管理密码</h3>
-      <div class="password-display">
-        <div class="pwd-dots">
-          <span v-for="i in 4" :key="i" class="pwd-dot" :class="{ filled: i <= pwdInput.length }"></span>
-        </div>
+      <div class="password-input-area">
+        <van-field
+          v-model="pwdInput"
+          type="password"
+          placeholder="输入管理密码（至少6位，需含字母+数字）"
+          :error="pwdError"
+          :error-message="pwdErrorMessage"
+          size="large"
+          style="font-size:16px"
+        />
+        <van-button type="primary" block @click="verifyPassword" style="margin-top:12px">
+          🔓 登录
+        </van-button>
       </div>
-      <div class="numpad">
-        <button
-          v-for="n in numpadKeys"
-          :key="n.value"
-          class="numpad-key"
-          :class="{ wide: n.wide }"
-          @click="handleNumpad(n.value)"
-        >
-          {{ n.label }}
-        </button>
-      </div>
-      <p v-if="pwdError" class="pwd-error">❌ 密码错误，请重试</p>
     </div>
 
     <!-- 管理界面 -->
@@ -115,8 +112,8 @@
                   {{ msg.specialCondition && msg.specialCondition !== 'null' ? '🎯 ' + msg.specialCondition : '—' }}
                 </span>
                 <div class="msg-actions">
-                  <button class="msg-btn" @click="startEdit(msg)">✏️</button>
-                  <button class="msg-btn msg-btn-danger" @click="confirmDeleteMessage(msg)">🗑️</button>
+                  <button class="msg-btn" @click="startEdit(msg)" aria-label="编辑">✏️</button>
+                  <button class="msg-btn msg-btn-danger" @click="confirmDeleteMessage(msg)" aria-label="删除">🗑️</button>
                 </div>
               </div>
             </template>
@@ -131,9 +128,13 @@
           <span class="toggle-icon">{{ showResetPwd ? '▲' : '▼' }}</span>
         </div>
         <div v-show="showResetPwd" class="reset-pwd-form">
-          <p class="form-hint">当前密码：{{ currentPassword }}</p>
           <div class="reset-row">
-            <van-field v-model="newPassword" placeholder="输入新4位密码" maxlength="4" type="password" style="flex:1" />
+            <van-field
+              v-model="newPassword"
+              placeholder="新密码（至少6位，字母+数字）"
+              type="password"
+              style="flex:1"
+            />
             <van-button type="primary" size="small" @click="resetPassword">修改</van-button>
           </div>
         </div>
@@ -149,76 +150,49 @@
 
 <script setup>
 import { showToast, showConfirmDialog } from 'vant'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
-import { safeGetString, safeSetString, STORAGE_KEYS } from '../composables/useStorage.js'
-import { hashString, verifyHash, DEFAULT_PWD_HASH, isHashFormat } from '../composables/usecrypto.js'
 
 const router = useRouter()
-const { state, addMessage, updateMessage, deleteMessage, setAdminPassword } = useDataStore()
+const { state, addMessage, updateMessage, deleteMessage, setAdminPassword, verifyAdminPassword } = useDataStore()
 
 // 密码验证
 const isAuthenticated = ref(false)
 const pwdInput = ref('')
 const pwdError = ref(false)
+const pwdErrorMessage = ref('')
 const currentPassword = ref('')
-
-const numpadKeys = [
-  { value: 1, label: '1' },
-  { value: 2, label: '2' },
-  { value: 3, label: '3' },
-  { value: 4, label: '4' },
-  { value: 5, label: '5' },
-  { value: 6, label: '6' },
-  { value: 7, label: '7' },
-  { value: 8, label: '8' },
-  { value: 9, label: '9' },
-  { value: 'clear', label: '⌫', wide: false },
-  { value: 0, label: '0' },
-  { value: 'confirm', label: '✓', wide: false }
-]
-
-onMounted(() => {
-  currentPassword.value = '****'
-})
-
-async function handleNumpad(value) {
-  if (value === 'clear') {
-    pwdInput.value = pwdInput.value.slice(0, -1)
-    pwdError.value = false
-  } else if (value === 'confirm') {
-    await verifyPassword()
-  } else {
-    if (pwdInput.value.length < 4) {
-      pwdInput.value += String(value)
-    }
-    if (pwdInput.value.length === 4) {
-      await verifyPassword()
-    }
-  }
-}
-
-async function verifyPassword() {
-  const storedHash = state.adminPassword || safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, DEFAULT_PWD_HASH)
-  const input = pwdInput.value
-  
-  // 哈希用户输入并与存储的哈希比较
-  const inputHash = await hashString(input)
-  if (inputHash === storedHash || inputHash === DEFAULT_PWD_HASH) {
-    isAuthenticated.value = true
-    pwdInput.value = ''
-    pwdError.value = false
-  } else {
-    pwdError.value = true
-    pwdInput.value = ''
-  }
-}
 
 // 新建留言
 const newMessageText = ref('')
 const newMessageType = ref('random')
 const newMessageCondition = ref('null')
+
+// 登录验证
+async function verifyPassword() {
+  if (!pwdInput.value.trim()) {
+    pwdError.value = true
+    pwdErrorMessage.value = '请输入密码'
+    return
+  }
+  try {
+    const ok = await verifyAdminPassword(pwdInput.value.trim())
+    if (ok) {
+      isAuthenticated.value = true
+      pwdInput.value = ''
+      pwdError.value = false
+      pwdErrorMessage.value = ''
+      currentPassword.value = '****'
+    } else {
+      pwdError.value = true
+      pwdErrorMessage.value = '密码错误，请重试'
+    }
+  } catch (e) {
+    pwdError.value = true
+    pwdErrorMessage.value = '验证失败，环境不支持加密工具'
+  }
+}
 
 function handleAddMessage() {
   const text = newMessageText.value.trim()
@@ -230,7 +204,7 @@ function handleAddMessage() {
     id: Date.now(),
     text,
     type: newMessageType.value,
-    author: '泓博',
+    author: '男朋友',
     createdAt: new Date().toISOString().slice(0, 10),
     displayedDates: [],
     specialCondition: newMessageCondition.value === 'null' ? null : newMessageCondition.value
@@ -288,16 +262,31 @@ function confirmDeleteMessage(msg) {
 const showResetPwd = ref(false)
 const newPassword = ref('')
 
-function resetPassword() {
+async function resetPassword() {
   const pwd = newPassword.value.trim()
-  if (!/^\d{4}$/.test(pwd)) {
-    showToast({ message: '密码必须是4位数字', type: 'fail' })
+  const validation = validatePassword(pwd)
+  if (!validation.valid) {
+    showToast({ message: validation.message, type: 'fail' })
     return
   }
-  setAdminPassword(pwd)
-  currentPassword.value = '****'
-  newPassword.value = ''
-  showToast({ message: '🔑 密码已修改', type: 'success' })
+  const ok = await setAdminPassword(pwd)
+  if (ok) {
+    currentPassword.value = '****'
+    newPassword.value = ''
+    showToast({ message: '🔑 密码已修改', type: 'success' })
+  }
+}
+
+function validatePassword(password) {
+  if (!password || password.length < 6) {
+    return { valid: false, message: '密码至少需要 6 位' }
+  }
+  const hasLetter = /[a-zA-Z]/.test(password)
+  const hasDigit = /\d/.test(password)
+  if (!hasLetter || !hasDigit) {
+    return { valid: false, message: '密码必须包含字母和数字' }
+  }
+  return { valid: true, message: '' }
 }
 
 // 排序（按创建时间倒序）
@@ -324,68 +313,12 @@ function typeLabel(type) {
 /* 密码验证 */
 .password-card {
   text-align: center;
+  padding: var(--space-xl);
 }
 
-.password-display {
-  margin: var(--space-xl) 0;
-}
-
-.pwd-dots {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-md);
-}
-
-.pwd-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--primary-light);
-  background: transparent;
-  transition: all var(--transition-fast);
-}
-
-.pwd-dot.filled {
-  background: var(--primary);
-  border-color: var(--primary);
-  transform: scale(1.1);
-}
-
-.numpad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-sm);
-  max-width: 240px;
-  margin: 0 auto;
-}
-
-.numpad-key {
-  padding: var(--space-md);
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--cream);
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-sm);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.numpad-key:active {
-  transform: scale(0.94);
-  background: var(--warm-pink);
-}
-
-.numpad-key.wide {
-  font-size: 18px;
-}
-
-.pwd-error {
-  color: #D63B5F;
-  font-size: var(--font-body-small);
-  margin-top: var(--space-md);
+.password-input-area {
+  margin: var(--space-lg) auto 0;
+  max-width: 300px;
 }
 
 /* 表单 */
@@ -499,80 +432,21 @@ function typeLabel(type) {
   gap: 4px;
 }
 
-.msg-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-}
-
-.msg-btn:active {
-  background: var(--peach);
-}
-
-.msg-btn-danger:active {
-  background: #FFCDD2;
-}
-
-/* 编辑表单 */
-.edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.edit-row {
-  display: flex;
-  gap: var(--space-sm);
-}
-
-.edit-row .input {
-  flex: 1;
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--font-body-small);
-}
-
-.edit-actions {
-  display: flex;
-  gap: var(--space-sm);
-  justify-content: flex-end;
-}
-
-/* 密码重置 */
 .manage-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  user-select: none;
 }
 
-.manage-header .toggle-icon {
-  font-size: var(--font-caption);
+.toggle-icon {
+  font-size: 14px;
   color: var(--text-secondary);
-}
-
-.reset-pwd-form {
-  margin-top: var(--space-md);
 }
 
 .reset-row {
   display: flex;
   gap: var(--space-sm);
-}
-
-.reset-row .input {
-  flex: 1;
-}
-
-/* 移动端适配 */
-@media (min-width: 768px) {
-  .admin-page {
-    max-width: 420px;
-    margin: 0 auto;
-  }
+  margin-top: var(--space-sm);
 }
 </style>

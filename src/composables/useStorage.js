@@ -10,7 +10,10 @@ const STORAGE_KEYS = {
   CHECKIN_BADGES: 'checkin_badges',
   LOVE_ANNIVERSARY: 'love_anniversary',
   NOTIFICATION_ENABLED: 'notification_enabled',
-  ADMIN_PASSWORD: 'admin_password'
+  ADMIN_PASSWORD: 'admin_password',
+  EXCLUDED_RESTAURANTS: 'excluded_restaurants',
+  FAVORITE_RESTAURANTS: 'favorite_restaurants',
+  DISPLAYED_DATES_CACHE: 'displayed_dates_cache'
 }
 
 // ========== localStorage 工具 ==========
@@ -47,6 +50,13 @@ function safeSetJSON(key, value) {
   }
 }
 
+/** autoCleanupStorage 同步回调；由 dataStore 注册 */
+let _syncCheckinHistoryCallback = null
+
+function setSyncCheckinHistoryCallback(fn) {
+  _syncCheckinHistoryCallback = fn
+}
+
 function autoCleanupStorage() {
   // 清理最旧的 checkin_history 记录
   try {
@@ -55,15 +65,15 @@ function autoCleanupStorage() {
       const cleaned = history.slice(-7)
       localStorage.setItem(STORAGE_KEYS.CHECKIN_HISTORY, JSON.stringify(cleaned))
       // 同步响应式 state，确保 UI 立即反映清理后的数据
-      if (window.__syncCheckinHistory) {
-        window.__syncCheckinHistory(cleaned)
+      if (_syncCheckinHistoryCallback) {
+        _syncCheckinHistoryCallback(cleaned)
       }
     }
   } catch (e) {
     try {
       localStorage.removeItem(STORAGE_KEYS.CHECKIN_HISTORY)
-      if (window.__syncCheckinHistory) {
-        window.__syncCheckinHistory([])
+      if (_syncCheckinHistoryCallback) {
+        _syncCheckinHistoryCallback([])
       }
     } catch (e2) {}
   }
@@ -278,6 +288,7 @@ export {
   safeGetString,
   safeSetString,
   clearAll,
+  setSyncCheckinHistoryCallback,
   // IndexedDB
   openDB,
   savePhoto,

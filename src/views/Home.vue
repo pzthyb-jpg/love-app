@@ -13,7 +13,7 @@
         <span class="deco-dot"></span>
       </div>
       <h1 class="home-title" @click="handleTitleClick">💕 小皮爱情助手</h1>
-      <span class="settings-icon" @click="goToSettings">⚙️</span>
+      <span class="settings-icon" @click="goToSettings" role="button" aria-label="设置">⚙️</span>
       <p class="home-subtitle">
         <template v-if="girlfriendName">{{ girlfriendName }}的</template>
        宝贝专属空间 ❤️
@@ -140,7 +140,7 @@ import { getTodaysMessage, formatMessageText } from '../composables/useMessages.
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
 
 const router = useRouter()
-const { state, setAnniversary } = useDataStore()
+const { state, setAnniversary, markMessageDisplayed } = useDataStore()
 
 const girlfriendName = computed(() => state.girlfriendName || '')
 
@@ -220,9 +220,7 @@ const todayMessage = computed(() => {
     return getTodaysMessage(msgs, today, hour)
   }
   if (result && !result.displayedDates?.includes(today)) {
-    result.displayedDates = result.displayedDates || []
-    result.displayedDates.push(today)
-    safeSetJSON(STORAGE_KEYS.MESSAGES, msgs)
+    markMessageDisplayed(result.id, today)
   }
   if (result) {
     return {
@@ -534,7 +532,7 @@ function saveAnniversary() {
   color: var(--text-secondary);
 }
 .status-circle.done .circle-label {
-  color: #2E7D32;
+  color: #1B5E20;
 }
 .status-circle.has-new .circle-label {
   color: #7C3AED;

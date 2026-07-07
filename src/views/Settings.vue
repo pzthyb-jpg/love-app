@@ -166,7 +166,7 @@
     <div class="card privacy-card">
       <div class="privacy-header">🔒 隐私说明</div>
       <ul class="privacy-list">
-        <li>所有数据仅存储在您的设备上，不会上传至任何服务器</li>
+        <li>所有数据仅存储在宝贝的设备上，不会上传至任何服务器</li>
         <li>照片仅保存在本地，不会分享给第三方</li>
         <li>清除浏览器数据会导致应用数据丢失，建议定期导出备份</li>
         <li>本应用完全离线运行，无需网络连接</li>
@@ -184,14 +184,23 @@ import { ref, computed, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { STORAGE_KEYS, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
 import { getLoveDays } from '../composables/useStreak.js'
+import { useReminder } from '../composables/useReminder.js'
 
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
 
-// localStorage 键名（遵循 PRD.md 定义）
-const KEY_GIRLFRIEND_NAME = 'girlfriend_name'
-const KEY_BOYFRIEND_NAME = 'boyfriend_name'
-const KEY_REMINDER_TIME = 'reminder_time'
-const KEY_CUSTOM_REMINDER_TIME = 'custom_reminder_time'
+// 使用 useReminder composable
+const {
+  notifEnabled: notificationEnabled,
+  reminderTime,
+  customReminderTime,
+  reminderScheduled,
+  nextReminderText,
+  scheduleReminder,
+  cancelReminder,
+  onToggleNotification,
+  onReminderTimeChange,
+  onCustomTimeChange
+} = useReminder()
 
 // 纪念日
 const anniversary = ref(state.loveAnniversary || '')
@@ -239,14 +248,7 @@ function onDateConfirm({ selectedValues }) {
 
 // 昵称
 const girlfriendName = ref(safeGetString(KEY_GIRLFRIEND_NAME, ''))
-const boyfriendName = ref(safeGetString(KEY_BOYFRIEND_NAME, '泓博'))
-
-// 提醒设置
-const notificationEnabled = ref(
-  safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true'
-)
-const reminderTime = ref(safeGetString(KEY_REMINDER_TIME, 'noon'))
-const customReminderTime = ref(safeGetString(KEY_CUSTOM_REMINDER_TIME, '12:00'))
+const boyfriendName = ref(safeGetString(KEY_BOYFRIEND_NAME, '男朋友'))
 
 // 导入文件引用
 const importInputRef = ref(null)
@@ -255,7 +257,7 @@ const importInputRef = ref(null)
 function saveSettings() {
   safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, anniversary.value)
   safeSetString(KEY_GIRLFRIEND_NAME, girlfriendName.value)
-  safeSetString(KEY_BOYFRIEND_NAME, boyfriendName.value || '泓博')
+  safeSetString(KEY_BOYFRIEND_NAME, boyfriendName.value || '男朋友')
   safeSetString(KEY_REMINDER_TIME, reminderTime.value)
   safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
 }
@@ -271,25 +273,11 @@ function onGirlfriendNameBlur() {
 }
 
 function onBoyfriendNameBlur() {
-  setBoyfriendName(boyfriendName.value || '泓博')
+  setBoyfriendName(boyfriendName.value || '男朋友')
   showToast({ message: '👦 昵称已保存', type: 'success' })
 }
 
-function onReminderTimeChange() {
-  safeSetString(KEY_REMINDER_TIME, reminderTime.value)
-  showToast({ message: '🕐 提醒时间已更新', type: 'success' })
-}
 
-function onCustomTimeChange() {
-  safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
-}
-
-function onToggleNotification(val) {
-  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, val ? 'true' : 'false')
-  showToast({ message: val ? '⏰ 提醒已开启' : '⏰ 提醒已关闭' })
-}
-
-// 导出数据
 function exportData() {
   const allData = {}
   Object.values(STORAGE_KEYS).forEach(key => {
@@ -376,7 +364,6 @@ function clearAllData() {
   try { localStorage.removeItem(KEY_REMINDER_TIME) } catch (e) {}
   try { localStorage.removeItem(KEY_CUSTOM_REMINDER_TIME) } catch (e) {}
 
-  showClearConfirm.value = false
   showToast({ message: '🗑️ 所有数据已清除，即将刷新', type: 'success' })
   setTimeout(() => {
     window.location.reload()
