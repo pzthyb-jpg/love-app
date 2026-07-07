@@ -1,11 +1,8 @@
 // useReminder.js — 提醒调度 composable（统一 Photo.vue 和 Settings.vue 的提醒逻辑）
 
 import { ref } from 'vue'
-import { safeGetString, safeSetString, STORAGE_KEYS } from './useStorage.js'
+import { safeGetString, safeSetString, STORAGE_KEYS, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME } from './useStorage.js'
 import { showToast } from 'vant'
-
-const KEY_REMINDER_TIME = 'reminder_time'
-const KEY_CUSTOM_REMINDER_TIME = 'custom_reminder_time'
 
 const REMINDER_TIME_MAP = {
   noon: [12, 0],

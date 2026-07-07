@@ -204,7 +204,7 @@
 import { showToast, showConfirmDialog } from 'vant'
 import { ref, computed, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
-import { STORAGE_KEYS, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
+import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
 import { getLoveDays } from '../composables/useStreak.js'
 import { useReminder } from '../composables/useReminder.js'
 import { useTheme } from '../composables/useTheme.js'

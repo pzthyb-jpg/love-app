@@ -16,6 +16,11 @@ const STORAGE_KEYS = {
   DISPLAYED_DATES_CACHE: 'displayed_dates_cache'
 }
 
+export const KEY_GIRLFRIEND_NAME = 'girlfriend_name'
+export const KEY_BOYFRIEND_NAME = 'boyfriend_name'
+export const KEY_REMINDER_TIME = 'reminder_time'
+export const KEY_CUSTOM_REMINDER_TIME = 'custom_reminder_time'
+
 // ========== localStorage 工具 ==========
 
 function safeGetJSON(key, defaultValue) {

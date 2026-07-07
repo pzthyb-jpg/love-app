@@ -13,7 +13,6 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico'],
       manifest: {
         name: '小皮爱情助手',
         short_name: '小皮助手',
