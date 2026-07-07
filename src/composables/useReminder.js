@@ -15,6 +15,43 @@ const REMINDER_TIME_MAP = {
 
 let reminderTimer = null
 
+// 分层推送文案
+function getPushMessage(missedDays = 0) {
+  if (missedDays >= 3) {
+    return {
+      title: '好想念宝贝',
+      body: '是不是我不够好看，你都不来看我...🥺',
+      level: 3
+    }
+  }
+  if (missedDays >= 2) {
+    return {
+      title: '宝贝在干嘛呀',
+      body: '怎么还不来打卡，气鼓鼓！😤',
+      level: 2
+    }
+  }
+  return {
+    title: '宝贝，今天打卡了吗',
+    body: '想看看你美美的样子～',
+    level: 1
+  }
+}
+
+// 计算断连天数（基于纪念日或最后一次打卡）
+function getMissedDays(anniversary, lastCheckinDate) {
+  if (!anniversary) return 0
+  const start = new Date(anniversary)
+  const now = new Date()
+  const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24))
+  if (lastCheckinDate) {
+    const last = new Date(lastCheckinDate)
+    const missedSinceLast = Math.floor((now - last) / (1000 * 60 * 60 * 24))
+    return Math.max(0, missedSinceLast - 1)
+  }
+  return Math.max(0, diff)
+}
+
 export function useReminder() {
   const notifEnabled = ref(
     safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true'
@@ -63,15 +100,18 @@ export function useReminder() {
 
     reminderTimer = setTimeout(() => {
       if (!notifEnabled.value) return
+      // 计算断连天数，选择分层文案
+      const missed = getMissedDays(state.loveAnniversary, state.lastCheckinDate)
+      const pushMsg = getPushMessage(missed)
       // 发送浏览器通知
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('📸 拍照打卡提醒', {
-          body: '宝贝，该拍照打卡啦！想看看你今天的样子 ❤️',
-          icon: '📸'
+        new Notification(pushMsg.title, {
+          body: pushMsg.body,
+          icon: './pwa-192x192.png'
         })
       }
       // 即使通知被拒绝，也内部提醒（通过 Toast）
-      showToast({ message: '📸 该拍照打卡啦！' })
+      showToast({ message: `${pushMsg.title} — ${pushMsg.body}` })
       // 安排明天的提醒
       scheduleReminder()
     }, msUntilTarget)
@@ -128,6 +168,8 @@ export function useReminder() {
     customReminderTime,
     reminderScheduled,
     nextReminderText,
+    getPushMessage,
+    getMissedDays,
     scheduleReminder,
     cancelReminder,
     onToggleNotification,
