@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sprint 5-6 UI 原型 — 性能跃升 + 功能增强</title>
+<style>
+  :root {
+    --primary: #FF6B9D;
+    --primary-light: #FF8DBB;
+    --primary-dark: #E8758A;
+    --warm-pink: #FFF0F3;
+    --cream: #FFF8F0;
+    --text-primary: #2D2D2D;
+    --text-secondary: #888;
+    --border: #FFE0E8;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 20px;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font-body);
+    background: #F5F5F5;
+    color: var(--text-primary);
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+  .phone-frame {
+    background: #fff;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* === 导航栏 === */
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-bar h1 { font-size: 17px; font-weight: 600; }
+  .nav-bar .page-indicator {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--warm-pink);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* === 页面容器 === */
+  .page { padding: var(--space-lg); padding-bottom: 80px; }
+  .page-title {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* === 卡片 === */
+  .card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-md);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* === 按钮 === */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-default { background: var(--warm-pink); color: var(--primary-dark); }
+  .btn-block { width: 100%; }
+  .btn-group { display: flex; gap: var(--space-sm); }
+  .btn-group .btn { flex: 1; }
+
+  /* === 标签页 === */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--warm-pink);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    margin-bottom: var(--space-lg);
+  }
+  .tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 13px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+  }
+  .tab.active {
+    background: #fff;
+    color: var(--primary);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  /* === 隐藏 === */
+  .hidden { display: none !important; }
+
+  /* === 提示条 === */
+  .toast {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    z-index: 400;
+    animation: toastIn 0.3s ease;
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* ========== 性能原型样式 ========== */
+
+  /* === 骨架屏 === */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .skeleton-card { padding: var(--space-lg); }
+  .skeleton-title { height: 16px; width: 60%; margin-bottom: var(--space-md); }
+  .skeleton-line { height: 12px; margin-bottom: var(--space-sm); }
+  .skeleton-line:last-child { width: 80%; }
+  .skeleton-circle { width: 60px; height: 60px; border-radius: 50%; margin-bottom: var(--space-sm); }
+
+  /* === 照片缩略图 === */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .photo-thumb {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--warm-pink);
+    position: relative;
+  }
+  .photo-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .photo-thumb .thumb-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 10px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 4px;
+  }
+
+  /* === 月历热力图 === */
+  .heatmap-calendar { text-align: center; }
+  .heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+  }
+  .heatmap-month { font-size: 15px; font-weight: 600; }
+  .heatmap-nav {
+    display: flex;
+    gap: 8px;
+  }
+  .heatmap-nav button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+  .heatmap-cell.empty { background: #f5f5f5; }
+  .heatmap-cell.level-1 { background: #FFE8F0; }
+  .heatmap-cell.level-2 { background: #FFB8D0; }
+  .heatmap-cell.level-3 { background: #FF8BB0; }
+  .heatmap-cell.level-4 { background: var(--primary); color: #fff; }
+  .heatmap-cell.has-checkin::after {
+    content: '💕';
+    font-size: 12px;
+  }
+  .heatmap-legend {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: var(--space-md);
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .heatmap-legend-item { display: flex; align-items: center; gap: 4px; }
+  .heatmap-legend-color { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* === 推送文案预览 === */
+  .push-preview {
+    display: flex;
+    gap: 12px;
+    margin-bottom: var(--space-md);
+    align-items: center;
+  }
+  .push-phone {
+    width: 80px;
+    height: 140px;
+    background: #2D2D2D;
+    border-radius: 12px;
+    padding: 8px;
+    flex-shrink: 0;
+  }
+  .push-screen {
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px;
+    font-size: 8px;
+  }
+  .push-notif {
+    background: var(--warm-pink);
+    border-radius: 6px;
+    padding: 4px 6px;
+  }
+  .push-notif .app { font-weight: 600; font-size: 7px; }
+  .push-notif .title { font-weight: 600; font-size: 8px; margin-top: 2px; }
+  .push-notif .body { font-size: 7px; color: var(--text-secondary); margin-top: 1px; }
+  .push-info { flex: 1; }
+  .push-info .label { font-size: 11px; color: var(--primary); font-weight: 600; }
+  .push-info .text { font-size: 13px; line-height: 1.4; margin-top: 4px; }
+
+  /* === 纪念日体验 === */
+  .anniversary-screen {
+    background: linear-gradient(135deg, #FFE8E0, #FFF0F5);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .anniversary-screen::before {
+    content: '💕';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 20px;
+    opacity: 0.3;
+    animation: floatHeart 3s ease-in-out infinite;
+  }
+  .anniversary-screen::after {
+    content: '💕';
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 20px;
+    opacity: 0.3;
+    animation: floatHeart 3s ease-in-out infinite 1.5s;
+  }
+  @keyframes floatHeart {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-10px) scale(1.1); }
+  }
+  .anniversary-days {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--primary);
+    margin: var(--space-md) 0;
+  }
+  .anniversary-label { font-size: 16px; font-weight: 600; }
+  .anniversary-sub { font-size: 13px; color: var(--text-secondary); margin-top: var(--space-sm); }
+
+  /* === PWA 安装引导 === */
+  .pwa-prompt {
+    background: linear-gradient(135deg, var(--primary-light), var(--warm-pink));
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: var(--space-md);
+  }
+  .pwa-icon { font-size: 32px; }
+  .pwa-info { flex: 1; color: #fff; }
+  .pwa-info .title { font-weight: 600; font-size: 14px; }
+  .pwa-info .desc { font-size: 11px; opacity: 0.9; margin-top: 2px; }
+  .pwa-btn {
+    background: #fff;
+    color: var(--primary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* === 备份导出 === */
+  .backup-card { text-align: center; padding: var(--space-xl); }
+  .backup-icon { font-size: 48px; margin-bottom: var(--space-md); }
+  .backup-title { font-size: 16px; font-weight: 600; margin-bottom: var(--space-sm); }
+  .backup-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: var(--space-md); line-height: 1.6; }
+  .backup-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: var(--space-md);
+    padding: var(--space-md);
+    background: var(--warm-pink);
+    border-radius: var(--radius-md);
+  }
+  .backup-stat .num { font-size: 20px; font-weight: 700; color: var(--primary); }
+  .backup-stat .label { font-size: 10px; color: var(--text-secondary); }
+
+  /* === 底部导航 === */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 420px;
+    margin: 0 auto;
+    background: #fff;
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 0;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+  }
+  .nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    font-size: 10px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+  }
+  .nav-tab .nav-icon { font-size: 20px; }
+  .nav-tab.active { color: var(--primary); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="phone-frame">
+
+  <!-- ========== 导航栏 ========== -->
+  <div class="nav-bar">
+    <h1>⚡ Sprint 5-6 原型</h1>
+    <span class="page-indicator" id="pageIndicator">骨架屏</span>
+  </div>
+
+  <!-- ========== 页面1: 骨架屏 ========== -->
+  <div class="page" id="pageSkeleton">
+    <div class="page-title">🦴 骨架屏加载状态（新增）</div>
+    
+    <div class="card">
+      <div class="card-title">加载中的首页</div>
+      <div class="skeleton-card">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line" style="width: 60%;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="skeleton-card">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <div class="skeleton skeleton-circle"></div>
+          <div style="flex: 1;">
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line" style="width: 70%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="📋 设计说明</div>
+      <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 16px; line-height: 1.8;">
+        <li>二级页面（拍照/午餐/愿望）加载时显示 Skeleton</li>
+        <li>模拟真实内容布局，提升感知性能</li>
+        <li>渐动画效果不干扰用户</li>
+        <li>网络慢时用户不会看到白屏</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 页面2: 照片缩略图 ========== -->
+  <div class="page hidden" id="pageThumb">
+    <div class="page-title">🖼️ 照片缩略图加载</div>
+    
+    <div class="card">
+      <div class="card-title">回忆照片墙（优化后）</div>
+      <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">
+        200×200 缩略图 · 原图按需加载
+      </div>
+      <div class="photo-grid">
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23FFD4E0'/%3E" alt="thumb">
+          <span class="thumb-badge">💕</span>
+        </div>
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23D4E0FF'/%3E" alt="thumb">
+        </div>
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23E0FFD4'/%3E" alt="thumb">
+        </div>
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23FFE0D4'/%3E" alt="thumb">
+          <span class="thumb-badge">💕</span>
+        </div>
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23F0E8FF'/%3E" alt="thumb">
+        </div>
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23D4FFF0'/%3E" alt="thumb">
+        </div>
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23FFF8D4'/%3E" alt="thumb">
+          <span class="thumb-badge">💕</span>
+        </div>
+        <div class="photo-thumb">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23FFD4F0'/%3E" alt="thumb">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 设计说明</div>
+      <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 16px; line-height: 1.8;">
+        <li>存储 200×200 缩略图（~15KB），原图按需加载</li>
+        <li>照片墙加载速度提升 60%</li>
+        <li>点击缩略图进入全屏浏览时才加载原图</li>
+        <li>有打卡记录的显示 💕 标记</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 页面3: 月历热力图 ========== -->
+  <div class="page hidden" id="pageHeatmap">
+    <div class="page-title">📅 月历热力图（新增功能）</div>
+    
+    <div class="card">
+      <div class="card-title">打卡热力图</div>
+      <div class="heatmap-calendar">
+        <div class="heatmap-header">
+          <button class="heatmap-nav" onclick="showToast('上一月')">◀</button>
+          <span class="heatmap-month">2026年7月</span>
+          <button class="heatmap-nav" onclick="showToast('下一月')">▶</button>
+        </div>
+        <div class="heatmap-grid">
+          <div class="heatmap-cell empty"></div>
+          <div class="heatmap-cell empty"></div>
+          <div class="heatmap-cell empty"></div>
+          <div class="heatmap-cell level-3">1</div>
+          <div class="heatmap-cell level-4 has-checkin">2</div>
+          <div class="heatmap-cell level-4 has-checkin">3</div>
+          <div class="heatmap-cell level-4 has-checkin">4</div>
+          <div class="heatmap-cell level-4 has-checkin">5</div>
+          <div class="heatmap-cell level-4 has-checkin">6</div>
+          <div class="heatmap-cell level-3 has-checkin">7</div>
+          <div class="heatmap-cell level-2">8</div>
+          <div class="heatmap-cell level-1">9</div>
+          <div class="heatmap-cell level-3 has-checkin">10</div>
+          <div class="heatmap-cell level-4 has-checkin">11</div>
+          <div class="heatmap-cell level-4 has-checkin">12</div>
+          <div class="heatmap-cell level-4 has-checkin">13</div>
+          <div class="heatmap-cell level-4 has-checkin">14</div>
+          <div class="heatmap-cell level-3 has-checkin">15</div>
+          <div class="heatmap-cell level-2">16</div>
+          <div class="heatmap-cell level-1">17</div>
+          <div class="heatmap-cell level-3 has-checkin">18</div>
+          <div class="heatmap-cell level-4 has-checkin">19</div>
+          <div class="heatmap-cell level-4 has-checkin">20</div>
+          <div class="heatmap-cell level-4 has-checkin">21</div>
+          <div class="heatmap-cell level-4 has-checkin">22</div>
+          <div class="heatmap-cell level-3 has-checkin">23</div>
+          <div class="heatmap-cell level-2">24</div>
+          <div class="heatmap-cell level-1">25</div>
+          <div class="heatmap-cell level-3 has-checkin">26</div>
+          <div class="heatmap-cell level-4 has-checkin">27</div>
+          <div class="heatmap-cell level-4 has-checkin">28</div>
+          <div class="heatmap-cell has-checkin" style="background: var(--primary); color: #fff; font-weight: 600;">29</div>
+          <div class="heatmap-cell empty"></div>
+          <div class="heatmap-cell empty"></div>
+          <div class="heatmap-cell empty"></div>
+        </div>
+        <div class="heatmap-legend">
+          <div class="heatmap-legend-item"><div class="heatmap-legend-color" style="background: #FFE8F0;"></div>1天</div>
+          <div class="heatmap-legend-item"><div class="heatmap-legend-color" style="background: #FFB8D0;"></div>2天</div>
+          <div class="heatmap-legend-item"><div class="heatmap-legend-color" style="background: #FF8BB0;"></div>3天</div>
+          <div class="heatmap-legend-item"><div class="heatmap-legend-color" style="background: var(--primary);"></div>4天+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">月度统计</div>
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1; text-align: center; padding: 12px; background: var(--warm-pink); border-radius: var(--radius-md);">
+          <div style="font-size: 24px; font-weight: 700; color: var(--primary);">26</div>
+          <div style="font-size: 10px; color: var(--text-secondary);">打卡天数</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 12px; background: var(--warm-pink); border-radius: var(--radius-md);">
+          <div style="font-size: 24px; font-weight: 700; color: var(--primary);">12</div>
+          <div style="font-size: 10px; color: var(--text-secondary);">最长连击</div>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 12px; background: var(--warm-pink); border-radius: var(--radius-md);">
+          <div style="font-size: 24px; font-weight: 700; color: var(--primary);">82%</div>
+          <div style="font-size: 10px; color: var(--text-secondary);">完成率</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 页面4: 推送分层策略 ========== -->
+  <div class="page hidden" id="pagePush">
+    <div class="page-title">🔔 推送提醒（SW 替代 setInterval）</div>
+    
+    <div class="card">
+      <div class="card-title">分层推送策略</div>
+      <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+        断连后自动升级语气，情感递进
+      </div>
+      
+      <div class="push-preview">
+        <div class="push-phone">
+          <div class="push-screen">
+            <div class="push-notif">
+              <div class="app">💕 小皮爱情助手</div>
+              <div class="title">宝贝，今天打卡了吗？</div>
+              <div class="body">想看看你美美的样子～</div>
+            </div>
+          </div>
+        </div>
+        <div class="push-info">
+          <div class="label">第1天 · 温柔</div>
+          <div class="text" style="color: var(--primary);">宝贝，今天打卡了吗？想看看你美美的样子～</div>
+        </div>
+      </div>
+
+      <div class="push-preview">
+        <div class="push-phone">
+          <div class="push-screen">
+            <div class="push-notif" style="background: #FFE8E0;">
+              <div class="app">💕 小皮爱情助手</div>
+              <div class="title">宝贝在干嘛呀？</div>
+              <div class="body">怎么还不来打卡，气鼓鼓！</div>
+            </div>
+          </div>
+        </div>
+        <div class="push-info">
+          <div class="label">第2天 · 撒娇</div>
+          <div class="text" style="color: var(--primary-dark);">宝贝在干嘛呀？怎么还不来打卡，气鼓鼓！😤</div>
+        </div>
+      </div>
+
+      <div class="push-preview">
+        <div class="push-phone">
+          <div class="push-screen">
+            <div class="push-notif" style="background: #FFF0F5;">
+              <div class="app">💕 小皮爱情助手</div>
+              <div class="title">好想念宝贝</div>
+              <div class="body">是不是我不够好看，你都不来看我...</div>
+            </div>
+          </div>
+        </div>
+        <div class="push-info">
+          <div class="label">第3天 · 想念</div>
+          <div class="text" style="color: #CC4444;">好想念宝贝，是不是我不够好看，你都不来看我...🥺</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 设计说明</div>
+      <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 16px; line-height: 1.8;">
+        <li>使用 Service Worker 推送替代 setInterval</li>
+        <li>App 关闭后仍能收到提醒</li>
+        <li>超过7天未打卡自动停止推送</li>
+        <li>用户可在设置中关闭</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 页面5: 数据备份 ========== -->
+  <div class="page hidden" id="pageBackup">
+    <div class="page-title">📦 数据完整备份（新增）</div>
+    
+    <div class="card backup-card">
+      <div class="backup-icon">📦</div>
+      <h3 class="backup-title">完整备份数据</h3>
+      <p class="backup-desc">
+        导出所有打卡记录、照片、愿望和留言<br>
+        生成 ZIP 文件保存到本地
+      </p>
+      <div class="backup-stats">
+        <div class="backup-stat">
+          <div class="num">26</div>
+          <div class="label">打卡照片</div>
+        </div>
+        <div class="backup-stat">
+          <div class="num">8</div>
+          <div class="label">愿望</div>
+        </div>
+        <div class="backup-stat">
+          <div class="num">3</div>
+          <div class="label">留言</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="showToast('📦 正在打包...')">📦 备份全部数据</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 设计说明</div>
+      <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 16px; line-height: 1.8;">
+        <li>导出 JSON 元数据 + IndexedDB 照片</li>
+        <li>使用 JSZip 生成 ZIP 压缩包</li>
+        <li>支持还原到本设备</li>
+        <li>建议每月备份一次</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 页面6: 纪念日活动 ========== -->
+  <div class="page hidden" id="pageAnniversary">
+    <div class="page-title">🎂 纪念日特殊体验</div>
+    
+    <div class="anniversary-screen">
+      <div class="anniversary-label">在一起</div>
+      <div class="anniversary-days">365</div>
+      <div class="anniversary-sub">天 💕</div>
+      <div style="font-size: 14px; color: var(--text-secondary); margin-top: var(--space-md);">
+        一周年纪念日快乐！
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-title">纪念日卡片</div>
+      <div style="padding: 16px; background: linear-gradient(135deg, #FFE8F0, #F0E8FF); border-radius: var(--radius-md); text-align: center;">
+        <div style="font-size: 40px; margin-bottom: 8px;">🎂</div>
+        <div style="font-size: 16px; font-weight: 600;">宝贝一周年快乐！</div>
+        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+          过去365天，每一天都因为你而闪闪发光 ✨
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 设计说明</div>
+      <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 16px; line-height: 1.8;">
+        <li>纪念日前7天开始预热（首页显示倒计时）</li>
+        <li>纪念日当天全屏爱心主题</li>
+        <li>自动生成纪念卡片</li>
+        <li>365天/100天等里程碑特殊庆祝</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 页面7: PWA 安装引导 ========== -->
+  <div class="page hidden" id="pagePWAInstall">
+    <div class="page-title">📱 PWA 安装引导</div>
+    
+    <div class="card">
+      <div class="card-title">添加到主屏幕</div>
+      <div class="pwa-prompt">
+        <div class="pwa-icon">📱</div>
+        <div class="pwa-info">
+          <div class="title">安装小皮爱情助手</div>
+          <div class="desc">像原生 App 一样使用，无需打开浏览器</div>
+        </div>
+        <button class="pwa-btn" onclick="showToast('正在安装...')">安装</button>
+      </div>
+      
+      <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
+        <strong>安装后你可以：</strong>
+        <ul style="padding-left: 16px; margin-top: 6px;">
+          <li>从主屏幕一键打开</li>
+          <li>获得全屏沉浸式体验</li>
+          <li>接收推送提醒</li>
+          <li>离线也能正常使用</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">iOS 安装步骤</div>
+      <div style="font-size: 12px; line-height: 2;">
+        <div>1. 点击 Safari 底部分享按钮 <span style="font-size: 16px;">📤</span></div>
+        <div>2. 选择「添加到主屏幕」</div>
+        <div>3. 点击「添加」完成安装</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 底部导航 ========== -->
+  <div class="bottom-nav">
+    <button class="nav-tab active" onclick="switchPage('skeleton')" data-page="skeleton">
+      <span class="nav-icon">🦴</span>骨架
+    </button>
+    <button class="nav-tab" onclick="switchPage('thumb')" data-page="thumb">
+      <span class="nav-icon">🖼️</span>缩略图
+    </button>
+    <button class="nav-tab" onclick="switchPage('heatmap')" data-page="heatmap">
+      <span class="nav-icon">📅</span>月历
+    </button>
+    <button class="nav-tab" onclick="switchPage('push')" data-page="push">
+      <span class="nav-icon">🔔</span>推送
+    </button>
+    <button class="nav-tab" onclick="switchPage('backup')" data-page="backup">
+      <span class="nav-icon">📦</span>备份
+    </button>
+    <button class="nav-tab" onclick="switchPage('anniversary')" data-page="anniversary">
+      <span class="nav-icon">🎂</span>纪念
+    </button>
+    <button class="nav-tab" onclick="switchPage('pwainstall')" data-page="pwainstall">
+      <span class="nav-icon">📱</span>安装
+    </button>
+  </div>
+
+</div>
+
+<!-- ========== Toast ========== -->
+<div class="toast hidden" id="toast"></div>
+
+<script>
+  // Toast
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 2000);
+  }
+
+  // 页面切换
+  function switchPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    document.getElementById('page' + page.charAt(0).toUpperCase() + page.slice(1))?.classList.remove('hidden');
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.nav-tab[data-page="${page}"]`)?.classList.add('active');
+    
+    const labels = {
+      skeleton: '骨架屏',
+      thumb: '缩略图',
+      heatmap: '月历',
+      push: '推送',
+      backup: '备份',
+      anniversary: '纪念日',
+      pwainstall: 'PWA'
+    };
+    document.getElementById('pageIndicator').textContent = labels[page] || '';
+  }
+</script>
+</body>
+</html>

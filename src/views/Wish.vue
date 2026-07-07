@@ -363,21 +363,71 @@ function confirmDelete() {
   closeActionMenu()
 }
 
-// 数据导出
-function exportData() {
-  const data = {
-    version: '2.0',
-    exportedAt: new Date().toISOString(),
-    wishes: state.wishes
+// 数据导出（ZIP 完整备份）
+async function exportData() {
+  try {
+    const JSZip = (await import('jszip')).default
+    const zip = new JSZip()
+    
+    // 元数据
+    const meta = {
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      wishes: state.wishes,
+      messages: state.messages,
+      settings: {
+        girlfriendName: state.girlfriendName,
+        boyfriendName: state.boyfriendName,
+        anniversary: state.anniversary
+      }
+    }
+    zip.file('metadata.json', JSON.stringify(meta, null, 2))
+    
+    // 提醒设置
+    const reminderEnabled = localStorage.getItem('reminder_enabled') !== 'false'
+    const reminderTime = localStorage.getItem('reminder_time') || '08:00'
+    
+    // 照片（localStorage）
+    const photosFolder = zip.folder('photos')
+    try {
+      const allPhotos = safeGetJSON(STORAGE_KEYS.PHOTOS || 'love_photos_v2', [])
+      if (Array.isArray(allPhotos)) {
+        allPhotos.forEach((p, i) => {
+          const photoData = typeof p === 'string' ? p : p?.photo
+          if (photoData) {
+            const base64Data = photoData.split(',')[1] || photoData
+            photosFolder.file(`photo_${i}.jpg`, base64Data, { base64: true })
+          }
+        })
+      }
+    } catch (e) {
+      // 跳过照片
+    }
+    
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `小皮完整备份_${getTodayStr()}.zip`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast({ message: '📦 完整备份已下载', type: 'success' })
+  } catch (e) {
+    // 降级为纯 JSON
+    const data = {
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      wishes: state.wishes
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `愿望池备份_${getTodayStr()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast({ message: '💾 备份已下载', type: 'success' })
   }
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `愿望池备份_${getTodayStr()}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  showToast({ message: '💾 备份文件已下载', type: 'success' })
 }
 
 function triggerImport() {

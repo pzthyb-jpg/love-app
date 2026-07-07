@@ -115,7 +115,7 @@
           class="photo-thumb"
           @click="openGallery(index)"
         >
-          <img :src="item.photo" :alt="item.date" />
+          <img :src="item.photo" :alt="item.date" loading="lazy" />
         </div>
         <div v-if="recentPhotos.length === 0" class="empty-thumb">
           <span>📷</span>
