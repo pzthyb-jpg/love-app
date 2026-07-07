@@ -6,6 +6,28 @@
       <h2>设置</h2>
     </div>
 
+    <!-- 主题设置 -->
+    <div class="card settings-card">
+      <!-- Dark mode toggle -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">{{ isDark ? '🌙' : '☀️' }}</div>
+          <div class="setting-text">
+            <div class="setting-label">{{ isDark ? '暗夜模式' : '白日模式' }}</div>
+            <div class="setting-desc">{{ isDark ? '深色护眼，夜间更舒适' : '清爽明亮，日间更清晰' }}</div>
+          </div>
+        </div>
+        <div class="setting-action">
+          <van-switch :model-value="isDark" size="24px" @update:model-value="toggleDarkMode" />
+        </div>
+      </div>
+      <div class="setting-divider"></div>
+      <!-- Theme preview selector -->
+      <div class="setting-item theme-preview-wrap">
+        <ThemePreview />
+      </div>
+    </div>
+
     <!-- 纪念日设置 -->
     <div class="card settings-card">
       <div class="setting-item">
@@ -185,6 +207,10 @@ import { useDataStore } from '../stores/dataStore.js'
 import { STORAGE_KEYS, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
 import { getLoveDays } from '../composables/useStreak.js'
 import { useReminder } from '../composables/useReminder.js'
+import { useTheme } from '../composables/useTheme.js'
+import ThemePreview from '../components/ThemePreview.vue'
+
+const { isDark, toggleDarkMode } = useTheme()
 
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
 
@@ -581,5 +607,11 @@ function clearAllData() {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* Theme preview override */
+.theme-preview-wrap {
+  display: block;
+  padding: 0;
 }
 </style>
