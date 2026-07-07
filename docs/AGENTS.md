@@ -51,12 +51,33 @@
 
 ---
 
+## 版本控制规范（不可协商）
+
+### 隔离原则
+- **禁止在 master/main 上直接修改**，所有变更必须在专属 worktree 中
+- 分支命名：`agent-[领域]/[类型]/[英文简述]`，如 `agent-ui/feat/sprint7-8-animations`
+- 严禁跨 worktree 越权操作
+
+### 提交粒度
+- 原子化：每完成一个功能闭环或修复一个错误点即 commit
+- 允许多次试错 commit，但单 commit 逻辑必须内聚
+
+### Commit Message 模板
+```
+🤖 [Agent: 角色名] [type]: 概述
+• 修改明细 1
+• 修改明细 2
+• 验收结果：npm run build 验证通过
+```
+
+---
+
 ## 自验证步骤（每功能）
 
 1. `npm run build` → 失败则自修复 ≤3 次
 2. `npm run dev` + curl 验证
 3. 安全 grep 检查
-4. `git commit`
+4. `git commit`（按上方版本控制规范）
 
 ---
 
