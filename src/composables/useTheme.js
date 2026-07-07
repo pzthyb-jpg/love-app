@@ -94,6 +94,7 @@ const DARK_VARS_KEYS = Object.keys(DARK_VARS)
 
 // ─── 内部状态 ───
 const STORAGE_KEY = 'theme_prefs'
+const COOKIE_NAME = 'theme_prefs'
 const darkMode = ref(false)
 const colorTheme = ref('rose')
 const isInitialized = ref(false)
@@ -113,12 +114,12 @@ function removeVars(keys) {
 
 function setDarkMode(mode) {
   darkMode.value = mode
+  document.documentElement.setAttribute('data-theme', mode ? 'dark' : 'light')
+  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(JSON.stringify({ darkMode: mode, colorTheme: colorTheme.value }))}; path=/; max-age=31536000`
   if (mode) {
     applyVars(DARK_VARS)
-    document.documentElement.setAttribute('data-theme', 'dark')
   } else {
     removeVars(DARK_VARS_KEYS)
-    document.documentElement.removeAttribute('data-theme')
   }
 }
 
@@ -126,15 +127,18 @@ function setColorTheme(themeId) {
   if (!COLOR_THEMES[themeId]) return
   colorTheme.value = themeId
   applyVars(COLOR_THEMES[themeId].vars)
+  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(JSON.stringify({ darkMode: darkMode.value, colorTheme: themeId }))}; path=/; max-age=31536000`
 }
 
 // ─── 持久化 ───
 function savePrefs() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    const payload = JSON.stringify({
       darkMode: darkMode.value,
       colorTheme: colorTheme.value,
-    }))
+    })
+    localStorage.setItem(STORAGE_KEY, payload)
+    document.cookie = `${COOKIE_NAME}=${encodeURIComponent(payload)}; path=/; max-age=31536000`
   } catch (e) { /* ignore */ }
 }
 
@@ -146,8 +150,18 @@ function loadPrefs() {
       if (typeof prefs.darkMode === 'boolean') darkMode.value = prefs.darkMode
       if (prefs.colorTheme && COLOR_THEMES[prefs.colorTheme]) colorTheme.value = prefs.colorTheme
     } else {
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-      darkMode.value = !!prefersDark
+      // Fallback: parse from cookie
+      const match = document.cookie.match(/(?:^|;\s*)theme_prefs=([^;]*)/)
+      if (match) {
+        try {
+          const prefs = JSON.parse(decodeURIComponent(match[1]))
+          if (typeof prefs.darkMode === 'boolean') darkMode.value = prefs.darkMode
+          if (prefs.colorTheme && COLOR_THEMES[prefs.colorTheme]) colorTheme.value = prefs.colorTheme
+        } catch (e) { /* ignore */ }
+      } else {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        darkMode.value = !!prefersDark
+      }
     }
   } catch (e) {
     // ignore
@@ -159,11 +173,18 @@ export function useTheme() {
   if (!isInitialized.value) {
     isInitialized.value = true
     loadPrefs()
-    setColorTheme(colorTheme.value)
-    setDarkMode(darkMode.value)
+    // 同步到 DOM
+    document.documentElement.setAttribute('data-theme', darkMode.value ? 'dark' : 'light')
+    if (darkMode.value) {
+      applyVars(DARK_VARS)
+    }
+    if (COLOR_THEMES[colorTheme.value]) {
+      applyVars(COLOR_THEMES[colorTheme.value].vars)
+    }
     savePrefs()
   }
 
+  // 持久化 (仅 storage)
   watch([darkMode, colorTheme], function() {
     savePrefs()
   })
