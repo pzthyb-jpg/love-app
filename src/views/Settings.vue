@@ -60,7 +60,7 @@
           </div>
         </div>
         <div class="setting-action">
-          <span class="date-display" @click="showDatePicker = true">{{ anniversary || '选择日期' }}</span>
+          <span class="manage-link" @click="router.push('/anniversary')">管理 ›</span>
         </div>
       </div>
       <!-- 周年倒计时 -->
@@ -79,20 +79,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 日期选择弹窗 -->
-    <Teleport to="body">
-      <van-popup v-model:show="showDatePicker" position="bottom" round>
-        <van-date-picker
-          v-model="selectedDate"
-          title="选择纪念日"
-          :min-date="minDate"
-          :max-date="new Date()"
-          @confirm="onDateConfirm"
-          @cancel="showDatePicker = false"
-        />
-      </van-popup>
-    </Teleport>
 
     <!-- 昵称设置 -->
     <div class="card settings-card">
@@ -224,6 +210,7 @@
 import { showToast, showConfirmDialog } from 'vant'
 import { ref, computed, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
+import { useRouter } from 'vue-router'
 import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME, KEY_ANIMATION_DENSITY, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
 import { getLoveDays } from '../composables/useStreak.js'
 import { useReminder } from '../composables/useReminder.js'
@@ -231,8 +218,8 @@ import { useTheme } from '../composables/useTheme.js'
 import ThemePreview from '../components/ThemePreview.vue'
 
 const { isDark, toggleDarkMode } = useTheme()
-
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
+const router = useRouter()
 
 // 使用 useReminder composable
 const {
@@ -278,21 +265,7 @@ const nextAnniversaryYear = computed(() => {
   return year
 })
 
-// 日期选择器
-const showDatePicker = ref(false)
-const selectedDate = ref([])
-const minDate = new Date(2010, 0, 1)
 
-function onDateConfirm({ selectedValues }) {
-  const [year, month, day] = selectedValues
-  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  anniversary.value = dateStr
-  safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, dateStr)
-  showDatePicker.value = false
-  showToast({ message: '🎂 纪念日已更新', type: 'success' })
-}
-
-// 昵称
 const girlfriendName = ref(safeGetString(KEY_GIRLFRIEND_NAME, ''))
 const boyfriendName = ref(safeGetString(KEY_BOYFRIEND_NAME, '男朋友'))
 
@@ -650,5 +623,13 @@ function clearAllData() {
 .theme-preview-wrap {
   display: block;
   padding: 0;
+}
+
+/* 管理链接 */
+.manage-link {
+  font-size: var(--font-body-small);
+  color: var(--primary);
+  font-weight: 500;
+  cursor: pointer;
 }
 </style>

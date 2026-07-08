@@ -113,20 +113,6 @@
       </div>
     </div>
 
-    <!-- 纪念日设置弹窗 -->
-    <Teleport to="body">
-      <div v-if="showAnniversaryModal" class="dialog-overlay" @click.self="showAnniversaryModal = false">
-        <div class="dialog-box">
-          <h3>🎂 设置纪念日</h3>
-          <p>选择我们在一起的那一天</p>
-          <input type="date" v-model="anniversaryInput" class="input" style="margin-bottom:var(--space-lg);" />
-          <div class="dialog-actions">
-            <van-button type="default" size="small" @click="showAnniversaryModal = false">取消</van-button>
-            <van-button type="primary" size="small" @click="saveAnniversary">保存</van-button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -140,14 +126,11 @@ import { getTodaysMessage, formatMessageText } from '../composables/useMessages.
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS, KEY_ANIMATION_DENSITY } from '../composables/useStorage.js'
 
 const router = useRouter()
-const { state, setAnniversary, markMessageDisplayed } = useDataStore()
+const { state, markMessageDisplayed } = useDataStore()
 
 const girlfriendName = computed(() => state.girlfriendName || '')
 
 const daysRef = ref(null)
-const showAnniversaryModal = ref(false)
-const anniversaryInput = ref('')
-const anniversarySet = ref(false)
 
 let titleClickCount = 0
 let titleClickTimer = null
@@ -301,25 +284,7 @@ function handleTitleClick() {
   }
 }
 
-function showAnniversarySetting() {
-  showAnniversaryModal.value = true
-  anniversaryInput.value = state.loveAnniversary || ''
-}
 
-function saveAnniversary() {
-  if (anniversaryInput.value) {
-    setAnniversary(anniversaryInput.value)
-    showAnniversaryModal.value = false
-    anniversarySet.value = true
-    showToast({ message: '🎉 纪念日设置成功！', type: 'success' })
-    // 重新触发数字动画
-    nextTick(() => {
-      if (daysRef.value) {
-        animateNumber(daysRef.value, loveDays.value, 1200)
-      }
-    })
-  }
-}
 </script>
 
 <style scoped>
