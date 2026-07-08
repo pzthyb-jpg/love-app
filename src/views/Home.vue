@@ -137,7 +137,7 @@ import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
 import { getLoveDays, getWeekDates, getTodayStr, calculateStreak, getNextMilestone } from '../composables/useStreak.js'
 import { getTodaysMessage, formatMessageText } from '../composables/useMessages.js'
-import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
+import { safeGetJSON, safeSetJSON, STORAGE_KEYS, KEY_ANIMATION_DENSITY } from '../composables/useStorage.js'
 
 const router = useRouter()
 const { state, setAnniversary, markMessageDisplayed } = useDataStore()
@@ -233,6 +233,12 @@ const todayMessage = computed(() => {
 
 // 数字滚动动画
 onMounted(async () => {
+  // 同步动画密度
+  try {
+    const density = localStorage.getItem(KEY_ANIMATION_DENSITY) || 'full'
+    document.documentElement.dataset.animation = density
+  } catch (e) {}
+
   await nextTick()
   if (loveDays.value > 0 && daysRef.value) {
     animateNumber(daysRef.value, loveDays.value, 1200)
@@ -263,6 +269,10 @@ function goToTab(index) {
 
 function goToSettings() {
   router.push('/settings')
+}
+
+function goToAnniversary() {
+  router.push('/anniversary')
 }
 
 // 漂浮爱心随机样式
@@ -417,6 +427,26 @@ function saveAnniversary() {
     opacity: 0;
     transform: translateY(-100vh) rotate(360deg) scale(1.2);
   }
+}
+
+/* === 动画密度控制 === */
+[data-animation="off"] .floating-hearts {
+  display: none;
+}
+[data-animation="compact"] .floating-hearts .float-heart:nth-child(n+4) {
+  display: none;
+}
+[data-animation="compact"] .floating-hearts {
+  opacity: 0.5;
+}
+[data-animation="density"] .floating-hearts {
+  --heart-count: 12;
+}
+[data-animation="density"] .floating-hearts::before {
+  content: '';
+}
+[data-animation="density"] .floating-hearts .float-heart {
+  animation-duration: 4s !important;
 }
 
 /* 爱的数据 */
