@@ -13,8 +13,8 @@
         <div class="setting-info">
           <div class="setting-icon">{{ isDark ? '🌙' : '☀️' }}</div>
           <div class="setting-text">
-            <div class="setting-label">{{ isDark ? '暗夜模式' : '白日模式' }}</div>
-            <div class="setting-desc">{{ isDark ? '深色护眼，夜间更舒适' : '清爽明亮，日间更清晰' }}</div>
+            <div class="setting-label">{{ isDark ? '深色模式' : '浅色模式' }}</div>
+            <div class="setting-desc">{{ isDark ? '深色调，夜间更舒适' : '浅色调，日间更清晰' }}</div>
           </div>
         </div>
         <div class="setting-action">
@@ -35,8 +35,8 @@
           <div class="setting-icon">🎂</div>
           <div class="setting-text">
             <div class="setting-label">纪念日</div>
-            <div class="setting-desc" v-if="anniversary">我们在一起的那一天</div>
-            <div class="setting-desc" v-else>我们在一起的那一天</div>
+            <div class="setting-desc" v-if="anniversary">管理纪念日</div>
+            <div class="setting-desc" v-else>记录我们的重要日子</div>
           </div>
         </div>
         <div class="setting-action">
@@ -81,7 +81,7 @@
           <div class="setting-icon">👧</div>
           <div class="setting-text">
             <div class="setting-label">女朋友昵称</div>
-            <div class="setting-desc">宝贝的名字</div>
+            <div class="setting-desc">TA 的昵称</div>
           </div>
         </div>
         <div class="setting-action">
@@ -110,7 +110,7 @@
           <div class="setting-icon">⏰</div>
           <div class="setting-text">
             <div class="setting-label">中午打卡提醒</div>
-            <div class="setting-desc">每天提醒宝贝拍照打卡</div>
+            <div class="setting-desc">拍照打卡提醒</div>
           </div>
         </div>
         <div class="setting-action">
@@ -188,7 +188,7 @@
     <div class="card privacy-card">
       <div class="privacy-header">🔒 隐私说明</div>
       <ul class="privacy-list">
-        <li>所有数据仅存储在宝贝的设备上，不会上传至任何服务器</li>
+        <li>所有数据仅存储在本设备上，不会上传至任何服务器</li>
         <li>照片仅保存在本地，不会分享给第三方</li>
         <li>清除浏览器数据会导致应用数据丢失，建议定期导出备份</li>
         <li>本应用完全离线运行，无需网络连接</li>

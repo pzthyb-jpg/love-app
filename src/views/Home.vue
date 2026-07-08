@@ -12,11 +12,11 @@
         <span class="deco-dot" style="background:var(--primary-light);opacity:0.4;"></span>
         <span class="deco-dot"></span>
       </div>
-      <h1 class="home-title" @click="handleTitleClick">💕 小皮爱情助手</h1>
+      <h1 class="home-title" @click="handleTitleClick">💕 小皮</h1>
       <span class="settings-icon" @click="goToSettings" role="button" aria-label="设置">⚙️</span>
       <p class="home-subtitle">
         <template v-if="girlfriendName">{{ girlfriendName }}的</template>
-       宝贝专属空间 ❤️
+       你的专属空间
       </p>
     </div>
 
@@ -26,9 +26,9 @@
         <div class="love-days-number" ref="daysRef">0</div>
         <div class="love-days-label">💖 在一起 第 <span ref="daysLabelRef">{{ loveDays }}</span> 天</div>
       </div>
-      <div v-else class="love-days-empty" @click="showAnniversarySetting">
+      <div v-else class="love-days-empty" @click="goToAnniversary">
         <span class="emoji">🎂</span>
-        <p>设置纪念日</p>
+        <p>去记录我们的第一天 →</p>
       </div>
       <div class="love-stats">
         <div class="stat-item">
@@ -40,7 +40,7 @@
         <div class="stat-item">
           <span class="stat-emoji">🍽️</span>
           <span class="stat-value">{{ totalLunchSpins }}</span>
-          <span class="stat-label">已转</span>
+          <span class="stat-label">已选</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
@@ -122,7 +122,7 @@
           <input type="date" v-model="anniversaryInput" class="input" style="margin-bottom:var(--space-lg);" />
           <div class="dialog-actions">
             <van-button type="default" size="small" @click="showAnniversaryModal = false">取消</van-button>
-            <van-button type="primary" size="small" @click="saveAnniversary">保存 💕</van-button>
+            <van-button type="primary" size="small" @click="saveAnniversary">保存</van-button>
           </div>
         </div>
       </div>
