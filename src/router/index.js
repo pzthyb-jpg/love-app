@@ -26,6 +26,12 @@ const routes = [
     meta: { title: '愿望', icon: '✨', tab: 3 }
   },
   {
+    path: '/anniversary',
+    name: 'Anniversary',
+    component: () => import('../views/Anniversary.vue'),
+    meta: { title: '纪念', icon: '🎂', tab: 4 }
+  },
+  {
     path: '/messages-admin',
     name: 'MessagesAdmin',
     component: () => import('../views/MessagesAdmin.vue'),

@@ -49,6 +49,7 @@ const state = reactive({
   checkinBadges: safeGetJSON(STORAGE_KEYS.CHECKIN_BADGES, []),
   loveAnniversary: safeGetString(STORAGE_KEYS.LOVE_ANNIVERSARY, ''),
   notificationEnabled: safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true',
+  anniversaries: safeGetJSON(STORAGE_KEYS.ANNIVERSARIES, []),
   // 密码哈希值（PBKDF2-SHA256 格式）
   adminPassword: { hash: '', salt: '', legacyHash: '' }
 })
@@ -257,6 +258,87 @@ function setBoyfriendName(name) {
   safeSetString('boyfriend_name', name)
 }
 
+// ========== 纪念日 CRUD ==========
+
+/**
+ * 计算某个纪念日的下次发生日期（今年或明年）
+ */
+function getNextOccurrence(dateStr) {
+  const original = new Date(dateStr)
+  if (isNaN(original.getTime())) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const thisYear = new Date(today.getFullYear(), original.getMonth(), original.getDate())
+  return thisYear >= today ? thisYear : new Date(today.getFullYear() + 1, original.getMonth(), original.getDate())
+}
+
+/**
+ * 计算距离下次发生的天数
+ */
+function getDaysUntil(dateStr) {
+  const next = getNextOccurrence(dateStr)
+  if (!next) return 0
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((next - today) / 86400000)
+}
+
+/**
+ * 计算从原始日期到今天的总天数（相守天数）
+ */
+function getDaysSince(dateStr) {
+  const original = new Date(dateStr)
+  if (isNaN(original.getTime())) return 0
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.floor((today - original) / 86400000)
+}
+
+/**
+ * 添加纪念日
+ * @param {Object} data - { name, date, type, emoji, remark, remindDays }
+ */
+function addAnniversary(data) {
+  const now = new Date().toISOString()
+  const item = {
+    id: `ann_${Date.now()}`,
+    name: data.name,
+    date: data.date,
+    type: data.type,
+    emoji: data.emoji || '💕',
+    remark: data.remark || '',
+    remindDays: data.remindDays || [3],
+    createdAt: now,
+    updatedAt: now
+  }
+  state.anniversaries.unshift(item)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.ANNIVERSARIES, state.anniversaries), 'ANNIVERSARIES')
+  return item
+}
+
+/**
+ * 更新纪念日
+ */
+function updateAnniversary(id, updates) {
+  const idx = state.anniversaries.findIndex(a => a.id === id)
+  if (idx !== -1) {
+    state.anniversaries[idx] = {
+      ...state.anniversaries[idx],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    }
+    checkWriteResult(safeSetJSON(STORAGE_KEYS.ANNIVERSARIES, state.anniversaries), 'ANNIVERSARIES')
+  }
+}
+
+/**
+ * 删除纪念日
+ */
+function deleteAnniversary(id) {
+  state.anniversaries = state.anniversaries.filter(a => a.id !== id)
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.ANNIVERSARIES, state.anniversaries), 'ANNIVERSARIES')
+}
+
 export function useDataStore() {
   return {
     state,
@@ -279,6 +361,13 @@ export function useDataStore() {
     setAdminPassword,
     verifyAdminPassword,
     setGirlfriendName,
-    setBoyfriendName
+    setBoyfriendName,
+    // 纪念日
+    addAnniversary,
+    updateAnniversary,
+    deleteAnniversary,
+    getNextOccurrence,
+    getDaysUntil,
+    getDaysSince
   }
 }

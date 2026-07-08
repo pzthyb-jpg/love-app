@@ -24,6 +24,7 @@
         <van-tabbar-item to="/photo" icon="photograph">拍照</van-tabbar-item>
         <van-tabbar-item to="/lunch" icon="bag-o">午餐</van-tabbar-item>
         <van-tabbar-item to="/wish" icon="star-o">愿望</van-tabbar-item>
+        <van-tabbar-item to="/anniversary" icon="gift-o">纪念</van-tabbar-item>
         <van-tabbar-item to="/settings" icon="setting-o">设置</van-tabbar-item>
       </van-tabbar>
     </template>

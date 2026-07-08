@@ -13,7 +13,9 @@ const STORAGE_KEYS = {
   ADMIN_PASSWORD: 'admin_password',
   EXCLUDED_RESTAURANTS: 'excluded_restaurants',
   FAVORITE_RESTAURANTS: 'favorite_restaurants',
-  DISPLAYED_DATES_CACHE: 'displayed_dates_cache'
+  DISPLAYED_DATES_CACHE: 'displayed_dates_cache',
+  ANNIVERSARIES: 'anniversaries',
+  ANNIV_NOTIFICATION_SENT: 'anniv_notification_sent'
 }
 
 export const KEY_GIRLFRIEND_NAME = 'girlfriend_name'
