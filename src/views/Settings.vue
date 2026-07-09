@@ -13,12 +13,32 @@
         <div class="setting-info">
           <div class="setting-icon">{{ isDark ? '🌙' : '☀️' }}</div>
           <div class="setting-text">
-            <div class="setting-label">{{ isDark ? '暗夜模式' : '白日模式' }}</div>
-            <div class="setting-desc">{{ isDark ? '深色护眼，夜间更舒适' : '清爽明亮，日间更清晰' }}</div>
+            <div class="setting-label">{{ isDark ? '深色模式' : '浅色模式' }}</div>
+            <div class="setting-desc">{{ isDark ? '深色调，夜间更舒适' : '浅色调，日间更清晰' }}</div>
           </div>
         </div>
         <div class="setting-action">
           <van-switch :model-value="isDark" size="24px" @update:model-value="toggleDarkMode" />
+        </div>
+      </div>
+      <div class="setting-divider"></div>
+      <!-- Animation Density -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">🫧</div>
+          <div class="setting-text">
+            <div class="setting-label">动画密度</div>
+            <div class="setting-desc">首页漂浮爱心动画强度</div>
+          </div>
+        </div>
+        <div class="setting-action">
+          <van-dropdown-menu>
+            <van-dropdown-item
+              v-model="animationDensity"
+              :options="densityOptions"
+              @change="onDensityChange"
+            />
+          </van-dropdown-menu>
         </div>
       </div>
       <div class="setting-divider"></div>
@@ -35,12 +55,12 @@
           <div class="setting-icon">🎂</div>
           <div class="setting-text">
             <div class="setting-label">纪念日</div>
-            <div class="setting-desc" v-if="anniversary">我们在一起的那一天</div>
-            <div class="setting-desc" v-else>我们在一起的那一天</div>
+            <div class="setting-desc" v-if="anniversary">管理纪念日</div>
+            <div class="setting-desc" v-else>记录我们的重要日子</div>
           </div>
         </div>
         <div class="setting-action">
-          <span class="date-display" @click="showDatePicker = true">{{ anniversary || '选择日期' }}</span>
+          <span class="manage-link" @click="router.push('/anniversary')">管理 ›</span>
         </div>
       </div>
       <!-- 周年倒计时 -->
@@ -60,20 +80,6 @@
       </div>
     </div>
 
-    <!-- 日期选择弹窗 -->
-    <Teleport to="body">
-      <van-popup v-model:show="showDatePicker" position="bottom" round>
-        <van-date-picker
-          v-model="selectedDate"
-          title="选择纪念日"
-          :min-date="minDate"
-          :max-date="new Date()"
-          @confirm="onDateConfirm"
-          @cancel="showDatePicker = false"
-        />
-      </van-popup>
-    </Teleport>
-
     <!-- 昵称设置 -->
     <div class="card settings-card">
       <div class="setting-item">
@@ -81,7 +87,7 @@
           <div class="setting-icon">👧</div>
           <div class="setting-text">
             <div class="setting-label">女朋友昵称</div>
-            <div class="setting-desc">宝贝的名字</div>
+            <div class="setting-desc">TA 的昵称</div>
           </div>
         </div>
         <div class="setting-action">
@@ -110,7 +116,7 @@
           <div class="setting-icon">⏰</div>
           <div class="setting-text">
             <div class="setting-label">中午打卡提醒</div>
-            <div class="setting-desc">每天提醒宝贝拍照打卡</div>
+            <div class="setting-desc">拍照打卡提醒</div>
           </div>
         </div>
         <div class="setting-action">
@@ -188,7 +194,7 @@
     <div class="card privacy-card">
       <div class="privacy-header">🔒 隐私说明</div>
       <ul class="privacy-list">
-        <li>所有数据仅存储在宝贝的设备上，不会上传至任何服务器</li>
+        <li>所有数据仅存储在本设备上，不会上传至任何服务器</li>
         <li>照片仅保存在本地，不会分享给第三方</li>
         <li>清除浏览器数据会导致应用数据丢失，建议定期导出备份</li>
         <li>本应用完全离线运行，无需网络连接</li>
@@ -204,15 +210,16 @@
 import { showToast, showConfirmDialog } from 'vant'
 import { ref, computed, onMounted } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
-import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
+import { useRouter } from 'vue-router'
+import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME, KEY_ANIMATION_DENSITY, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
 import { getLoveDays } from '../composables/useStreak.js'
 import { useReminder } from '../composables/useReminder.js'
 import { useTheme } from '../composables/useTheme.js'
 import ThemePreview from '../components/ThemePreview.vue'
 
 const { isDark, toggleDarkMode } = useTheme()
-
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
+const router = useRouter()
 
 // 使用 useReminder composable
 const {
@@ -258,21 +265,7 @@ const nextAnniversaryYear = computed(() => {
   return year
 })
 
-// 日期选择器
-const showDatePicker = ref(false)
-const selectedDate = ref([])
-const minDate = new Date(2010, 0, 1)
 
-function onDateConfirm({ selectedValues }) {
-  const [year, month, day] = selectedValues
-  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  anniversary.value = dateStr
-  safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, dateStr)
-  showDatePicker.value = false
-  showToast({ message: '🎂 纪念日已更新', type: 'success' })
-}
-
-// 昵称
 const girlfriendName = ref(safeGetString(KEY_GIRLFRIEND_NAME, ''))
 const boyfriendName = ref(safeGetString(KEY_BOYFRIEND_NAME, '男朋友'))
 
@@ -288,8 +281,25 @@ function saveSettings() {
   safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
 }
 
+// 动画密度
+const animationDensity = ref(safeGetString(KEY_ANIMATION_DENSITY, 'full'))
+const densityOptions = [
+  { text: '关闭', value: 'off' },
+  { text: '紧凑', value: 'compact' },
+  { text: '完整', value: 'full' },
+  { text: '密集', value: 'density' }
+]
+
+function onDensityChange(val) {
+  safeSetString(KEY_ANIMATION_DENSITY, val)
+  document.documentElement.dataset.animation = val
+  showToast({ message: '🫧 动画密度已更新', type: 'success' })
+}
+
 // 监听变化自动保存
 onMounted(() => {
+  // 同步动画密度到 DOM
+  document.documentElement.dataset.animation = animationDensity.value
   // 使用 watch 的简单替代：保存按钮无需手动触发，通过 blur/change 事件
 })
 
@@ -613,5 +623,13 @@ function clearAllData() {
 .theme-preview-wrap {
   display: block;
   padding: 0;
+}
+
+/* 管理链接 */
+.manage-link {
+  font-size: var(--font-body-small);
+  color: var(--primary);
+  font-weight: 500;
+  cursor: pointer;
 }
 </style>

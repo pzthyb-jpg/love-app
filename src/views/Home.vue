@@ -12,11 +12,11 @@
         <span class="deco-dot" style="background:var(--primary-light);opacity:0.4;"></span>
         <span class="deco-dot"></span>
       </div>
-      <h1 class="home-title" @click="handleTitleClick">💕 小皮爱情助手</h1>
+      <h1 class="home-title" @click="handleTitleClick">💕 小皮</h1>
       <span class="settings-icon" @click="goToSettings" role="button" aria-label="设置">⚙️</span>
       <p class="home-subtitle">
         <template v-if="girlfriendName">{{ girlfriendName }}的</template>
-       宝贝专属空间 ❤️
+       你的专属空间
       </p>
     </div>
 
@@ -26,10 +26,14 @@
         <div class="love-days-number" ref="daysRef">0</div>
         <div class="love-days-label">💖 在一起 第 <span ref="daysLabelRef">{{ loveDays }}</span> 天</div>
       </div>
-      <div v-else class="love-days-empty" @click="showAnniversarySetting">
+      <div v-else class="love-days-empty" @click="goToAnniversary">
         <span class="emoji">🎂</span>
-        <p>设置纪念日</p>
+        <p>去记录我们的第一天 →</p>
       </div>
+      <!-- RED-1: 快捷打卡 -->
+      <button class="checkin-btn" :disabled="todayCheckedIn" @click="quickCheckin">
+        {{ todayCheckedIn ? '✓ 今日已打卡' : '⚡ 立即打卡' }}
+      </button>
       <div class="love-stats">
         <div class="stat-item">
           <span class="stat-emoji">📸</span>
@@ -40,7 +44,7 @@
         <div class="stat-item">
           <span class="stat-emoji">🍽️</span>
           <span class="stat-value">{{ totalLunchSpins }}</span>
-          <span class="stat-label">已转</span>
+          <span class="stat-label">已选</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
@@ -113,20 +117,6 @@
       </div>
     </div>
 
-    <!-- 纪念日设置弹窗 -->
-    <Teleport to="body">
-      <div v-if="showAnniversaryModal" class="dialog-overlay" @click.self="showAnniversaryModal = false">
-        <div class="dialog-box">
-          <h3>🎂 设置纪念日</h3>
-          <p>选择我们在一起的那一天</p>
-          <input type="date" v-model="anniversaryInput" class="input" style="margin-bottom:var(--space-lg);" />
-          <div class="dialog-actions">
-            <van-button type="default" size="small" @click="showAnniversaryModal = false">取消</van-button>
-            <van-button type="primary" size="small" @click="saveAnniversary">保存 💕</van-button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -137,17 +127,14 @@ import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
 import { getLoveDays, getWeekDates, getTodayStr, calculateStreak, getNextMilestone } from '../composables/useStreak.js'
 import { getTodaysMessage, formatMessageText } from '../composables/useMessages.js'
-import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
+import { safeGetJSON, safeSetJSON, STORAGE_KEYS, KEY_ANIMATION_DENSITY } from '../composables/useStorage.js'
 
 const router = useRouter()
-const { state, setAnniversary, markMessageDisplayed } = useDataStore()
+const { state, markMessageDisplayed } = useDataStore()
 
 const girlfriendName = computed(() => state.girlfriendName || '')
 
 const daysRef = ref(null)
-const showAnniversaryModal = ref(false)
-const anniversaryInput = ref('')
-const anniversarySet = ref(false)
 
 let titleClickCount = 0
 let titleClickTimer = null
@@ -233,6 +220,12 @@ const todayMessage = computed(() => {
 
 // 数字滚动动画
 onMounted(async () => {
+  // 同步动画密度
+  try {
+    const density = localStorage.getItem(KEY_ANIMATION_DENSITY) || 'full'
+    document.documentElement.dataset.animation = density
+  } catch (e) {}
+
   await nextTick()
   if (loveDays.value > 0 && daysRef.value) {
     animateNumber(daysRef.value, loveDays.value, 1200)
@@ -265,6 +258,10 @@ function goToSettings() {
   router.push('/settings')
 }
 
+function goToAnniversary() {
+  router.push('/anniversary')
+}
+
 // 漂浮爱心随机样式
 function getHeartStyle(i) {
   const left = 5 + Math.random() * 90
@@ -291,25 +288,12 @@ function handleTitleClick() {
   }
 }
 
-function showAnniversarySetting() {
-  showAnniversaryModal.value = true
-  anniversaryInput.value = state.loveAnniversary || ''
-}
-
-function saveAnniversary() {
-  if (anniversaryInput.value) {
-    setAnniversary(anniversaryInput.value)
-    showAnniversaryModal.value = false
-    anniversarySet.value = true
-    showToast({ message: '🎉 纪念日设置成功！', type: 'success' })
-    // 重新触发数字动画
-    nextTick(() => {
-      if (daysRef.value) {
-        animateNumber(daysRef.value, loveDays.value, 1200)
-      }
-    })
+const quickCheckin = () => {
+  if (store.addQuickCheckin(getTodayStr())) {
+    showToast('✅ 已打卡')
   }
 }
+
 </script>
 
 <style scoped>
@@ -419,6 +403,26 @@ function saveAnniversary() {
   }
 }
 
+/* === 动画密度控制 === */
+[data-animation="off"] .floating-hearts {
+  display: none;
+}
+[data-animation="compact"] .floating-hearts .float-heart:nth-child(n+4) {
+  display: none;
+}
+[data-animation="compact"] .floating-hearts {
+  opacity: 0.5;
+}
+[data-animation="density"] .floating-hearts {
+  --heart-count: 12;
+}
+[data-animation="density"] .floating-hearts::before {
+  content: '';
+}
+[data-animation="density"] .floating-hearts .float-heart {
+  animation-duration: 4s !important;
+}
+
 /* 爱的数据 */
 .love-data-card {
   text-align: center;
@@ -448,6 +452,26 @@ function saveAnniversary() {
   font-size: var(--font-h3);
   color: var(--text-secondary);
   margin-top: var(--space-sm);
+}
+
+/* RED-1: 快捷打卡按钮 */
+.checkin-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin-top: var(--space-lg);
+  border: none;
+  border-radius: 12px;
+  background: var(--primary);
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.checkin-btn:disabled {
+  background: var(--text-light);
+  cursor: default;
 }
 
 .love-stats {

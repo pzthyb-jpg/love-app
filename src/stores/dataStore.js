@@ -100,6 +100,14 @@ function addCheckin(record) {
   savePhoto(record)
 }
 
+function addQuickCheckin(dateStr) {
+  const today = dateStr || getTodayStr()
+  if (state.checkinHistory.some(h => h.date === today)) return false
+  state.checkinHistory.unshift({ date: today, type: 'quick' })
+  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_HISTORY, state.checkinHistory), 'CHECKIN_HISTORY')
+  return true
+}
+
 function addWish(wish) {
   state.wishes.unshift(wish)
   checkWriteResult(safeSetJSON(STORAGE_KEYS.WISHES, state.wishes), 'WISHES')
@@ -343,6 +351,7 @@ export function useDataStore() {
   return {
     state,
     addCheckin,
+    addQuickCheckin,
     addWish,
     updateWish,
     deleteWish,
