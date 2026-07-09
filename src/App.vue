@@ -183,6 +183,9 @@ function reloadPage() {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   margin-bottom: 12px;
+  [data-theme="dark"] & {
+    background: linear-gradient(90deg, #2C2C2E 25%, #3A3A3C 50%, #2C2C2E 75%);
+  }
 }
 .sk-card {
   height: 80px;
@@ -191,6 +194,9 @@ function reloadPage() {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   margin-bottom: 12px;
+  [data-theme="dark"] & {
+    background: linear-gradient(90deg, #2C2C2E 25%, #3A3A3C 50%, #2C2C2E 75%);
+  }
 }
 @keyframes shimmer {
   0% { background-position: 200% 0; }
