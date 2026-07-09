@@ -996,7 +996,7 @@ onUnmounted(() => {
 }
 
 .dialog-box {
-  background: #fff;
+  background: var(--white);
   border-radius: 16px;
   padding: 24px;
   max-width: 320px;

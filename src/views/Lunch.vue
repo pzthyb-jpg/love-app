@@ -377,7 +377,7 @@ onMounted(async () => {
 
 .capsule-btn.active {
   background: var(--primary);
-  color: #fff;
+  color: var(--white);
 }
 
 /* ===== Tab Content ===== */
@@ -446,7 +446,7 @@ onMounted(async () => {
   border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 14px;
-  background: #fff;
+  background: var(--white);
   outline: none;
   box-sizing: border-box;
 }
@@ -483,14 +483,14 @@ onMounted(async () => {
   white-space: nowrap;
   cursor: pointer;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--white);
   color: var(--text-secondary);
   transition: all 0.15s;
 }
 
 .tag.active {
   background: var(--primary);
-  color: #fff;
+  color: var(--white);
   border-color: var(--primary);
 }
 
@@ -502,7 +502,7 @@ onMounted(async () => {
 }
 
 .poi-card {
-  background: #fff;
+  background: var(--white);
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 12px;
@@ -558,7 +558,7 @@ onMounted(async () => {
   height: 36px;
   border-radius: 50%;
   border: 1.5px solid var(--border);
-  background: #fff;
+  background: var(--white);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -698,7 +698,7 @@ onMounted(async () => {
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--white);
   font-size: 14px;
   cursor: pointer;
   color: var(--text);
@@ -707,7 +707,7 @@ onMounted(async () => {
 
 .city-btn.active {
   background: var(--primary);
-  color: #fff;
+  color: var(--white);
   border-color: var(--primary);
 }
 
@@ -772,7 +772,7 @@ onMounted(async () => {
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.8);
-  color: #fff;
+  color: var(--white);
   padding: 10px 20px;
   border-radius: 20px;
   font-size: 13px;
@@ -803,7 +803,7 @@ onMounted(async () => {
 }
 
 .dialog-box {
-  background: #fff;
+  background: var(--white);
   border-radius: 16px;
   padding: 24px;
   max-width: 320px;

@@ -591,7 +591,7 @@ function clearAllData() {
   padding: 6px 14px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
-  background: white;
+  background: var(--white);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;

@@ -309,7 +309,7 @@ watch(() => props.restaurants, () => {
   height: 56px;
   border-radius: 50%;
   border: 3px solid var(--primary);
-  background: white;
+  background: var(--white);
   font-size: 22px;
   cursor: pointer;
   transition: all var(--transition-fast);

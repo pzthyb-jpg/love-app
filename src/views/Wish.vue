@@ -778,7 +778,7 @@ function importData(event) {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: white;
+  background: var(--white);
 }
 
 /* 标记实现弹窗 */
