@@ -30,6 +30,10 @@
         <span class="emoji">🎂</span>
         <p>去记录我们的第一天 →</p>
       </div>
+      <!-- RED-1: 快捷打卡 -->
+      <button class="checkin-btn" :disabled="todayCheckedIn" @click="quickCheckin">
+        {{ todayCheckedIn ? '✓ 今日已打卡' : '⚡ 立即打卡' }}
+      </button>
       <div class="love-stats">
         <div class="stat-item">
           <span class="stat-emoji">📸</span>
@@ -284,6 +288,11 @@ function handleTitleClick() {
   }
 }
 
+const quickCheckin = () => {
+  if (store.addQuickCheckin(getTodayStr())) {
+    showToast('✅ 已打卡')
+  }
+}
 
 </script>
 
@@ -443,6 +452,26 @@ function handleTitleClick() {
   font-size: var(--font-h3);
   color: var(--text-secondary);
   margin-top: var(--space-sm);
+}
+
+/* RED-1: 快捷打卡按钮 */
+.checkin-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin-top: var(--space-lg);
+  border: none;
+  border-radius: 12px;
+  background: var(--primary);
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.checkin-btn:disabled {
+  background: var(--text-light);
+  cursor: default;
 }
 
 .love-stats {
