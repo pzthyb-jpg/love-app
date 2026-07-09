@@ -22,31 +22,6 @@
         </div>
       </div>
       <div class="setting-divider"></div>
-      <!-- Animation Density -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">🫧</div>
-          <div class="setting-text">
-            <div class="setting-label">动画密度</div>
-            <div class="setting-desc">首页漂浮爱心动画强度</div>
-          </div>
-        </div>
-        <div class="setting-action">
-          <div class="radio-group">
-            <button
-              v-for="opt in densityOptions"
-              :key="opt.value"
-              :class="['radio-btn', { active: animationDensity === opt.value }]"
-              @click="onDensityChange(opt.value)"
-            >{{ opt.text }}</button>
-          </div>
-        </div>
-      </div>
-      <div class="setting-divider"></div>
-      <!-- Theme preview selector -->
-      <div class="setting-item theme-preview-wrap">
-        <ThemePreview />
-      </div>
     </div>
 
     <!-- 纪念日设置 -->
@@ -209,14 +184,13 @@
 
 <script setup>
 import { showToast, showConfirmDialog } from 'vant'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useDataStore } from '../stores/dataStore.js'
 import { useRouter } from 'vue-router'
-import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME, KEY_ANIMATION_DENSITY, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
+import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
 import { getLoveDays } from '../composables/useStreak.js'
 import { useReminder } from '../composables/useReminder.js'
 import { useTheme } from '../composables/useTheme.js'
-import ThemePreview from '../components/ThemePreview.vue'
 
 const { isDark, toggleDarkMode } = useTheme()
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
@@ -282,27 +256,7 @@ function saveSettings() {
   safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
 }
 
-// 动画密度
-const animationDensity = ref(safeGetString(KEY_ANIMATION_DENSITY, 'full'))
-const densityOptions = [
-  { text: '关闭', value: 'off' },
-  { text: '紧凑', value: 'compact' },
-  { text: '完整', value: 'full' },
-  { text: '密集', value: 'density' }
-]
 
-function onDensityChange(val) {
-  safeSetString(KEY_ANIMATION_DENSITY, val)
-  document.documentElement.dataset.animation = val
-  showToast({ message: '🫧 动画密度已更新', type: 'success' })
-}
-
-// 监听变化自动保存
-onMounted(() => {
-  // 同步动画密度到 DOM
-  document.documentElement.dataset.animation = animationDensity.value
-  // 使用 watch 的简单替代：保存按钮无需手动触发，通过 blur/change 事件
-})
 
 function onGirlfriendNameBlur() {
   setGirlfriendName(girlfriendName.value)
@@ -618,12 +572,6 @@ function clearAllData() {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
-}
-
-/* Theme preview override */
-.theme-preview-wrap {
-  display: block;
-  padding: 0;
 }
 
 /* 管理链接 */

@@ -1,69 +1,11 @@
-// useTheme.js — 主题状态管理 composable
-// 支持 light/dark 模式 + 4色主题换肤
+// useTheme.js — 仅保留 dark mode
 
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 
-// ─── 4 色主题定义 ───
-export const COLOR_THEMES = {
-  rose: {
-    id: 'rose',
-    name: '瑰粉',
-    emoji: '🌹',
-    vars: {
-      '--primary': '#E8758A',
-      '--primary-light': '#F4A5B5',
-      '--primary-dark': '#D45D72',
-      '--van-primary-color': '#E8758A',
-      '--van-primary-color-light': '#F4A5B5',
-      '--van-primary-color-dark': '#D45D72',
-      '--van-tabbar-item-active-color': '#E8758A',
-    }
-  },
-  violet: {
-    id: 'violet',
-    name: '紫藤',
-    emoji: '💜',
-    vars: {
-      '--primary': '#A78BFA',
-      '--primary-light': '#C4B5FD',
-      '--primary-dark': '#8B5CF6',
-      '--van-primary-color': '#A78BFA',
-      '--van-primary-color-light': '#C4B5FD',
-      '--van-primary-color-dark': '#8B5CF6',
-      '--van-tabbar-item-active-color': '#A78BFA',
-    }
-  },
-  sky: {
-    id: 'sky',
-    name: '蓝天',
-    emoji: '💙',
-    vars: {
-      '--primary': '#60A5FA',
-      '--primary-light': '#93C5FD',
-      '--primary-dark': '#3B82F6',
-      '--van-primary-color': '#60A5FA',
-      '--van-primary-color-light': '#93C5FD',
-      '--van-primary-color-dark': '#3B82F6',
-      '--van-tabbar-item-active-color': '#60A5FA',
-    }
-  },
-  mint: {
-    id: 'mint',
-    name: '抹茶',
-    emoji: '🍵',
-    vars: {
-      '--primary': '#34D399',
-      '--primary-light': '#6EE7B7',
-      '--primary-dark': '#10B981',
-      '--van-primary-color': '#34D399',
-      '--van-primary-color-light': '#6EE7B7',
-      '--van-primary-color-dark': '#10B981',
-      '--van-tabbar-item-active-color': '#34D399',
-    }
-  },
-}
+const STORAGE_KEY = 'theme_prefs'
+const darkMode = ref(false)
+const isInitialized = ref(false)
 
-// ─── Dark 模式 CSS 变量 ───
 const DARK_VARS = {
   '--bg': '#1D1D1F',
   '--bg-card': '#2C2C2E',
@@ -90,128 +32,37 @@ const DARK_VARS = {
   '--van-picker-mask-color': 'rgba(0,0,0,0.6)',
 }
 
-const DARK_VARS_KEYS = Object.keys(DARK_VARS)
-
-// ─── 内部状态 ───
-const STORAGE_KEY = 'theme_prefs'
-const COOKIE_NAME = 'theme_prefs'
-const darkMode = ref(false)
-const colorTheme = ref('rose')
-const isInitialized = ref(false)
-
-// ─── DOM 操作工具 ───
-function applyVars(vars) {
+function applyTheme() {
   const root = document.documentElement
-  for (const [key, value] of Object.entries(vars)) {
-    root.style.setProperty(key, value)
-  }
-}
-
-function removeVars(keys) {
-  const root = document.documentElement
-  keys.forEach(function(k) { root.style.removeProperty(k) })
-}
-
-function setDarkMode(mode) {
-  darkMode.value = mode
-  document.documentElement.setAttribute('data-theme', mode ? 'dark' : 'light')
-  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(JSON.stringify({ darkMode: mode, colorTheme: colorTheme.value }))}; path=/; max-age=31536000`
-  if (mode) {
-    applyVars(DARK_VARS)
+  if (darkMode.value) {
+    Object.entries(DARK_VARS).forEach(([k, v]) => root.style.setProperty(k, v))
+    root.dataset.theme = 'dark'
   } else {
-    removeVars(DARK_VARS_KEYS)
+    Object.keys(DARK_VARS).forEach(k => root.style.removeProperty(k))
+    root.dataset.theme = 'light'
   }
 }
 
-function setColorTheme(themeId) {
-  if (!COLOR_THEMES[themeId]) return
-  colorTheme.value = themeId
-  applyVars(COLOR_THEMES[themeId].vars)
-  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(JSON.stringify({ darkMode: darkMode.value, colorTheme: themeId }))}; path=/; max-age=31536000`
+function toggleDarkMode() {
+  darkMode.value = !darkMode.value
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ dark: darkMode.value }))
+  applyTheme()
 }
 
-// ─── 持久化 ───
-function savePrefs() {
+function initTheme() {
+  if (isInitialized.value) return
+  isInitialized.value = true
   try {
-    const payload = JSON.stringify({
-      darkMode: darkMode.value,
-      colorTheme: colorTheme.value,
-    })
-    localStorage.setItem(STORAGE_KEY, payload)
-    document.cookie = `${COOKIE_NAME}=${encodeURIComponent(payload)}; path=/; max-age=31536000`
-  } catch (e) { /* ignore */ }
-}
-
-function loadPrefs() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const prefs = JSON.parse(raw)
-      if (typeof prefs.darkMode === 'boolean') darkMode.value = prefs.darkMode
-      if (prefs.colorTheme && COLOR_THEMES[prefs.colorTheme]) colorTheme.value = prefs.colorTheme
-    } else {
-      // Fallback: parse from cookie
-      const match = document.cookie.match(/(?:^|;\s*)theme_prefs=([^;]*)/)
-      if (match) {
-        try {
-          const prefs = JSON.parse(decodeURIComponent(match[1]))
-          if (typeof prefs.darkMode === 'boolean') darkMode.value = prefs.darkMode
-          if (prefs.colorTheme && COLOR_THEMES[prefs.colorTheme]) colorTheme.value = prefs.colorTheme
-        } catch (e) { /* ignore */ }
-      } else {
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-        darkMode.value = !!prefersDark
-      }
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const prefs = JSON.parse(stored)
+      darkMode.value = prefs.dark || false
     }
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
+  applyTheme()
 }
 
-// ─── 公开 Composable ───
 export function useTheme() {
-  if (!isInitialized.value) {
-    isInitialized.value = true
-    loadPrefs()
-    // 同步到 DOM
-    document.documentElement.setAttribute('data-theme', darkMode.value ? 'dark' : 'light')
-    if (darkMode.value) {
-      applyVars(DARK_VARS)
-    }
-    if (COLOR_THEMES[colorTheme.value]) {
-      applyVars(COLOR_THEMES[colorTheme.value].vars)
-    }
-    savePrefs()
-  }
-
-  // 持久化 (仅 storage)
-  watch([darkMode, colorTheme], function() {
-    savePrefs()
-  })
-
-  const themeAttrs = computed(function() {
-    return {
-      'data-theme': darkMode.value ? 'dark' : 'light',
-      'data-color': colorTheme.value,
-    }
-  })
-
-  function toggleDarkMode() {
-    setDarkMode(!darkMode.value)
-  }
-
-  function selectColorTheme(id) {
-    setColorTheme(id)
-  }
-
-  return {
-    darkMode: darkMode,
-    colorTheme: colorTheme,
-    colorThemes: COLOR_THEMES,
-    themeAttrs: themeAttrs,
-    toggleDarkMode: toggleDarkMode,
-    selectColorTheme: selectColorTheme,
-    isDark: computed(function() { return darkMode.value }),
-    currentTheme: computed(function() { return COLOR_THEMES[colorTheme.value] }),
-  }
+  initTheme()
+  return { isDark: darkMode, toggleDarkMode }
 }
