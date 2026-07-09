@@ -166,14 +166,47 @@
       </div>
     </div>
 
+    <!-- 账号管理 -->
+    <div class="card settings-card">
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">{{ isAuthenticated ? (isAnonymous ? '👤' : '✅') : '❓' }}</div>
+          <div class="setting-text">
+            <div class="setting-label">{{ isAnonymous ? '匿名账号' : (isAuthenticated ? '已登录' : '未登录') }}</div>
+            <div class="setting-desc" v-if="isAnonymous">数据仅存在本设备，绑定邮箱可跨设备同步</div>
+            <div class="setting-desc" v-else-if="isAuthenticated">{{ user?.email || '已绑定' }}</div>
+            <div class="setting-desc" v-else>正在初始化...</div>
+          </div>
+        </div>
+        <van-button v-if="isAnonymous" size="small" type="primary" @click="showAccountDialog = true">绑定邮箱</van-button>
+        <van-button v-else-if="isAuthenticated" size="small" @click="handleSignOut">退出登录</van-button>
+      </div>
+      <!-- 绑定邮箱弹窗 -->
+      <Teleport to="body">
+        <div v-if="showAccountDialog" class="dialog-overlay" @click.self="showAccountDialog = false">
+          <div class="dialog-box">
+            <h3>绑定邮箱密码</h3>
+            <p class="dialog-desc">绑定后可在其他设备上登录，同步你的数据</p>
+            <div style="margin-top:16px">
+              <van-field v-model="bindEmail" placeholder="输入邮箱" type="email" autocomplete="off" />
+              <van-field v-model="bindPassword" placeholder="设置密码（6位以上）" type="password" autocomplete="off" style="margin-top:8px" />
+              <div style="display:flex;gap:8px;margin-top:16px">
+                <van-button plain block @click="showAccountDialog = false">取消</van-button>
+                <van-button type="primary" block :loading="bindLoading" @click="handleBindEmail">绑定</van-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+    </div>
+
     <!-- 隐私说明 -->
     <div class="card privacy-card">
       <div class="privacy-header">🔒 隐私说明</div>
       <ul class="privacy-list">
-        <li>所有数据仅存储在本设备上，不会上传至任何服务器</li>
-        <li>照片仅保存在本地，不会分享给第三方</li>
-        <li>清除浏览器数据会导致应用数据丢失，建议定期导出备份</li>
-        <li>本应用完全离线运行，无需网络连接</li>
+        <li>数据优先存储本地，绑定邮箱后同步到云端</li>
+        <li>所有数据传输均通过 HTTPS 加密</li>
+        <li>清除浏览器数据会导致本地数据丢失，建议定期导出备份</li>
       </ul>
     </div>
 
@@ -191,10 +224,68 @@ import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIM
 import { getLoveDays } from '../composables/useStreak.js'
 import { useReminder } from '../composables/useReminder.js'
 import { useTheme } from '../composables/useTheme.js'
+import { useDatabase } from '../composables/useDatabase.js'
 
 const { isDark, toggleDarkMode } = useTheme()
+const { user, isAuthenticated, isAnonymous, signInAnonymously, signUp, signOut, migrateLocalData } = useDatabase()
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
 const router = useRouter()
+
+// 账号绑定
+const showAccountDialog = ref(false)
+const bindEmail = ref('')
+const bindPassword = ref('')
+const bindLoading = ref(false)
+
+async function handleBindEmail() {
+  if (!bindEmail.value || !bindPassword.value) {
+    showToast({ message: '请填写邮箱和密码', type: 'fail' })
+    return
+  }
+  if (bindPassword.value.length < 6) {
+    showToast({ message: '密码至少 6 位', type: 'fail' })
+    return
+  }
+  bindLoading.value = true
+  try {
+    const { data, error } = await signUp(bindEmail.value, bindPassword.value)
+    if (error) {
+      // 如果用户已存在，尝试登录
+      if (error.message?.includes('already registered')) {
+        const { error: signInError } = await signIn(bindEmail.value, bindPassword.value)
+        if (signInError) throw signInError
+      } else {
+        throw error
+      }
+    }
+    // 迁移本地数据
+    if (data.user) {
+      await migrateLocalData(data.user.id)
+    }
+    showAccountDialog.value = false
+    bindEmail.value = ''
+    bindPassword.value = ''
+    showToast({ message: '绑定成功！数据已同步', type: 'success' })
+  } catch (e) {
+    showToast({ message: e.message || '绑定失败', type: 'fail' })
+  }
+  bindLoading.value = false
+}
+
+async function handleSignOut() {
+  try {
+    await showConfirmDialog({
+      title: '退出登录',
+      message: '退出后数据将仅保存在本设备，云端数据不会删除',
+    })
+    await signOut()
+    // 重新匿名登录
+    await signInAnonymously()
+    showToast({ message: '已退出登录' })
+  } catch (e) {
+    // 用户取消
+  }
+}
 
 // 使用 useReminder composable
 const {
