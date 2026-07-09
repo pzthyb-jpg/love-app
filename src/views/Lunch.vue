@@ -1,54 +1,144 @@
 <template>
   <div class="page lunch-page">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <span class="emoji">🍽️</span>
-      <h2>午餐大转盘</h2>
+    <!-- Header: 城市选择 + 胶囊 Tab -->
+    <div class="lunch-header">
+      <div class="city-selector" @click="showCityPicker = true">
+        <span class="city-name">📍 {{ currentCity }}</span>
+        <span class="city-arrow">▼</span>
+      </div>
+      <div class="capsule-tabs">
+        <button
+          :class="['capsule-btn', { active: activeTab === 'wheel' }]"
+          @click="activeTab = 'wheel'"
+        >转圈</button>
+        <button
+          :class="['capsule-btn', { active: activeTab === 'nearby' }]"
+          @click="activeTab = 'nearby'"
+        >附近</button>
+      </div>
     </div>
 
-    <!-- 转盘区域 -->
-    <div class="wheel-section">
-      <LunchWheel
-        ref="wheelRef"
-        :restaurants="restaurantList"
-        @spin-start="onSpinStart"
-        @spin-end="onSpinEnd"
-      />
-      <p class="wheel-hint" v-if="restaurantList.length < 2">
-        至少需要 2 家餐厅才能转哟 🥟
-      </p>
-    </div>
+    <!-- Tab: 转圈 -->
+    <div v-show="activeTab === 'wheel'" class="tab-content">
+      <!-- 转盘区域 -->
+      <div class="wheel-section">
+        <LunchWheel
+          ref="wheelRef"
+          :restaurants="favoritesList"
+          @spin-start="onSpinStart"
+          @spin-end="onSpinEnd"
+        />
+        <p class="wheel-hint" v-if="favoritesList.length < 2">
+          {{ favoritesList.length === 0 ? '去「附近」收藏餐厅，开始转吧 🥟' : '至少需要 2 家餐厅才能转哟 🥟' }}
+        </p>
+      </div>
 
-    <!-- 本周统计 -->
-    <div class="card stats-card">
-      <h3 class="card-title">📊 本周统计</h3>
-      <div class="stats-row">
-        <div class="stats-item">
-          <span class="stats-value">{{ weekSpinCount }}</span>
-          <span class="stats-label">本周已转</span>
+      <!-- 本周统计 -->
+      <div class="card stats-card">
+        <h3 class="card-title">📊 本周统计</h3>
+        <div class="stats-row">
+          <div class="stats-item">
+            <span class="stats-value">{{ weekSpinCount }}</span>
+            <span class="stats-label">本周已转</span>
+          </div>
+          <div class="stats-divider"></div>
+          <div class="stats-item">
+            <span class="stats-value">{{ todaySpinCount }}</span>
+            <span class="stats-label">今天已转</span>
+          </div>
+          <div class="stats-divider"></div>
+          <div class="stats-item">
+            <span class="stats-value">{{ totalSpinCount }}</span>
+            <span class="stats-label">累计</span>
+          </div>
         </div>
-        <div class="stats-divider"></div>
-        <div class="stats-item">
-          <span class="stats-value">{{ todaySpinCount }}</span>
-          <span class="stats-label">今天已转</span>
-        </div>
-        <div class="stats-divider"></div>
-        <div class="stats-item">
-          <span class="stats-value">{{ totalSpinCount }}</span>
-          <span class="stats-label">累计</span>
+        <div v-if="topRestaurants.length" class="top-list">
+          <div class="top-label">🏆 最常吃 TOP3</div>
+          <div class="top-items">
+            <span v-for="(item, idx) in topRestaurants" :key="idx" class="top-tag">
+              {{ item.emoji }} {{ item.name }} ×{{ item.count }}
+            </span>
+          </div>
         </div>
       </div>
-      <div v-if="topRestaurants.length" class="top-list">
-        <div class="top-label">🏆 最常吃 TOP3</div>
-        <div class="top-items">
-          <span
-            v-for="(item, idx) in topRestaurants"
-            :key="idx"
-            class="top-tag"
-          >
-            {{ item.emoji }} {{ item.name }} ×{{ item.count }}
-          </span>
+
+      <!-- 餐厅管理 -->
+      <div class="card manage-card">
+        <van-collapse v-model="showManage" :accordion="true" class="manage-collapse">
+          <van-collapse-item title="🏪 餐厅管理" name="manage">
+            <div class="restaurant-list">
+              <div v-for="(r, idx) in favoritesList" :key="idx" class="restaurant-item">
+                <span class="r-emoji">{{ r.emoji || '🍽️' }}</span>
+                <span class="r-name">{{ r.name }}</span>
+                <button class="r-delete" @click="handleUnfavorite(r)">💔</button>
+              </div>
+            </div>
+          </van-collapse-item>
+        </van-collapse>
+      </div>
+    </div>
+
+    <!-- Tab: 附近 -->
+    <div v-show="activeTab === 'nearby'" class="tab-content">
+      <!-- 未定位：空状态 -->
+      <div v-if="!locationReady" class="location-empty">
+        <div class="loc-icon">📍</div>
+        <h3>开启定位，发现身边好去处</h3>
+        <button class="bp" @click="handleAllowLocation">允许定位</button>
+        <p class="loc-hint">仅获取城市级位置，保护你的隐私</p>
+      </div>
+
+      <!-- 定位中 -->
+      <div v-else-if="locating" class="location-loading">
+        <div class="sp"></div>
+        <p>正在定位你所在的城市...</p>
+      </div>
+
+      <!-- 已定位：POI 列表 -->
+      <div v-else>
+        <!-- 搜索 + 分类 -->
+        <div class="filter-bar">
+          <div class="sb">
+            <input
+              v-model="searchKeyword"
+              placeholder="搜索餐厅名称"
+              class="si"
+            />
+          </div>
+          <div class="tags">
+            <span
+              v-for="cat in categories"
+              :key="cat"
+              :class="['tag', { active: activeCategory === cat }]"
+              @click="activeCategory = cat"
+            >{{ cat }}</span>
+          </div>
         </div>
+
+        <!-- POI 列表 -->
+        <div class="poi-list">
+          <div v-for="r in filteredRestaurants" :key="r.id" class="poi-card">
+            <div class="poi-info">
+              <div class="poi-name">{{ r.emoji }} {{ r.name }}</div>
+              <div class="poi-meta">
+                <span class="poi-star">★{{ r.rating }}</span>
+                <span class="poi-dot">·</span>
+                <span class="poi-dist">{{ r.distance }}</span>
+                <span class="poi-dot">·</span>
+                <span class="poi-cat">{{ r.tags?.[0] || '餐厅' }}</span>
+              </div>
+              <div class="poi-addr">{{ r.address }}</div>
+            </div>
+            <button
+              :class="['fav-btn', { active: isFavorite(r.id) }]"
+              @click="handleToggleFavorite(r)"
+            >{{ isFavorite(r.id) ? '♥' : '♡' }}</button>
+          </div>
+          <div v-if="filteredRestaurants.length === 0" class="poi-empty">
+            <p>没有找到相关餐厅</p>
+          </div>
+        </div>
+        <div class="poi-foot">数据来自高德，仅展示 3000m 内</div>
       </div>
     </div>
 
@@ -67,99 +157,86 @@
               🔁 再转（排除当前）
             </van-button>
           </div>
-          <div class="result-secondary-actions">
-            <van-button plain size="small" @click="navigateToRestaurant">
-              📍 导航
-            </van-button>
-            <van-button plain size="small" @click="toggleFavorite">
-              {{ isFavorited ? '💔 取消收藏' : '❤️ 收藏' }}
-            </van-button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 城市选择弹窗 -->
+    <Teleport to="body">
+      <div v-if="showCityPicker" class="dialog-overlay" @click.self="showCityPicker = false">
+        <div class="dialog-box city-picker">
+          <h4>选择城市</h4>
+          <div class="city-grid">
+            <button
+              v-for="city in availableCities"
+              :key="city"
+              :class="['city-btn', { active: currentCity === city }]"
+              @click="handleChangeCity(city)"
+            >{{ city }}</button>
           </div>
         </div>
       </div>
     </Teleport>
 
-    <!-- 餐厅管理 -->
-    <div class="card manage-card">
-      <van-collapse v-model="showManage" :accordion="true" class="manage-collapse">
-        <van-collapse-item title="🏪 餐厅管理" name="manage">
-          <div class="restaurant-list">
-            <div
-              v-for="(r, idx) in restaurantList"
-              :key="idx"
-              class="restaurant-item"
-            >
-              <span class="r-emoji">{{ r.emoji }}</span>
-              <span class="r-name">{{ r.name }}</span>
-              <button class="r-delete" @click="confirmDelete(r)">❌</button>
-            </div>
-          </div>
-          <div class="manage-actions">
-            <div class="add-row">
-              <input
-                v-model="newRestaurantName"
-                placeholder="输入餐厅名称"
-                class="input"
-                maxlength="20"
-                @keyup.enter="handleAddRestaurant"
-              />
-              <van-button type="primary" size="small" @click="handleAddRestaurant">
-                ➕ 添加
-              </van-button>
-            </div>
-            <van-button plain size="small" block @click="resetAllRestaurants">
-              🔄 重置默认列表
-            </van-button>
-          </div>
-        </van-collapse-item>
-      </van-collapse>
-    </div>
+    <!-- Toast -->
+    <div :class="['toast', { show: toastVisible }]">{{ toastMessage }}</div>
   </div>
 </template>
 
 <script setup>
-import { showToast, showConfirmDialog } from 'vant'
-import { ref, computed, nextTick } from 'vue'
-import { useDataStore } from '../stores/dataStore.js'
+import { showToast } from 'vant'
+import { ref, computed, onMounted } from 'vue'
 import LunchWheel from '../components/LunchWheel.vue'
 import { getTodayStr } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 import { launchConfetti } from '../utils/confetti.js'
-import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
+import { useDataStore } from '../stores/dataStore.js'
+import { getLocationByIP } from '../composables/useLocation.js'
+import {
+  favorites, restaurants, currentCity, userLat, userLon,
+  categories, activeCategory, searchKeyword, locating,
+  filteredRestaurants, searchNearby, toggleFavorite, isFavorite, spinWheel, setLocation
+} from '../composables/useRestaurants.js'
 
-const { state, addLunchRecord, addRestaurant, removeRestaurant, resetRestaurants } = useDataStore()
+const { state, addLunchRecord } = useDataStore()
 
+// Tab 状态
+const activeTab = ref('wheel')
+const showCityPicker = ref(false)
+const availableCities = ['北京', '上海', '深圳', '成都', '杭州']
+
+// 定位状态
+const locationReady = ref(false)
+
+// 转圈相关
 const wheelRef = ref(null)
-const showManage = ref('manage')
-const newRestaurantName = ref('')
 const showResult = ref(false)
 const resultRestaurant = ref(null)
-// 持久化 excludedList（使用 useStorage 的 safeGetJSON/safeSetJSON）
-const excludedList = ref(safeGetExcludedList())
-const favorites = ref(safeGetFavorites())
+const showManage = ref('')
+const excludedIds = ref([])
 
-function safeGetExcludedList() {
-  return safeGetJSON(STORAGE_KEYS.EXCLUDED_RESTAURANTS, [])
+// Toast
+const toastVisible = ref(false)
+const toastMessage = ref('')
+let toastTimer = null
+
+function showToastMsg(msg) {
+  toastMessage.value = msg
+  toastVisible.value = true
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastVisible.value = false }, 2000)
 }
 
-function safeSaveExcludedList(arr) {
-  safeSetJSON(STORAGE_KEYS.EXCLUDED_RESTAURANTS, arr)
-}
-
-function safeGetFavorites() {
-  return safeGetJSON(STORAGE_KEYS.FAVORITE_RESTAURANTS, [])
-}
-
-function safeSaveFavorites(arr) {
-  safeSetJSON(STORAGE_KEYS.FAVORITE_RESTAURANTS, arr)
-}
-
-// 餐厅列表（排除已排除的）
-const restaurantList = computed(() => {
-  return state.restaurants.filter(r => !excludedList.value.includes(r.name))
+// 收藏列表（用于转圈）
+const favoritesList = computed(() => {
+  return favorites.value.map(f => ({
+    name: f.name,
+    emoji: f.emoji,
+    id: f.id
+  }))
 })
 
-// 本周转盘次数
+// 统计
 const weekSpinCount = computed(() => {
   const today = new Date()
   const weekStart = new Date(today)
@@ -169,33 +246,24 @@ const weekSpinCount = computed(() => {
 })
 
 const todaySpinCount = computed(() => {
-  const today = getTodayStr()
-  return state.lunchHistory.filter(h => h.date === today).length
+  return state.lunchHistory.filter(h => h.date === getTodayStr()).length
 })
 
 const totalSpinCount = computed(() => state.lunchHistory.length)
 
-// TOP3 最常吃
 const topRestaurants = computed(() => {
   const counts = {}
-  state.lunchHistory.forEach(h => {
-    counts[h.restaurant] = (counts[h.restaurant] || 0) + 1
-  })
-  const items = Object.entries(counts)
+  state.lunchHistory.forEach(h => { counts[h.restaurant] = (counts[h.restaurant] || 0) + 1 })
+  return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([name, count]) => {
-      const r = state.restaurants.find(r => r.name === name)
-      return { name, emoji: r?.emoji || '🍽️', count }
+      const f = favorites.value.find(f => f.name === name)
+      return { name, emoji: f?.emoji || '🍽️', count }
     })
-  return items
 })
 
-const isFavorited = computed(() => {
-  if (!resultRestaurant.value) return false
-  return favorites.value.includes(resultRestaurant.value.name)
-})
-
+// 转圈逻辑
 function onSpinStart() {
   showResult.value = false
   resultRestaurant.value = null
@@ -204,18 +272,13 @@ function onSpinStart() {
 function onSpinEnd(winner) {
   resultRestaurant.value = winner
   showResult.value = true
-
-  // 记录
   const now = new Date()
   addLunchRecord({
     restaurant: winner.name,
     date: getTodayStr(),
     time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   })
-
   hapticFeedback(null, HAPTIC_PATTERNS.SPIN_STOP)
-
-  // 🎊 彩纸庆祝
   launchConfetti()
 }
 
@@ -225,87 +288,143 @@ function closeResult() {
 
 function confirmResult() {
   showResult.value = false
-  showToast({ message: '🎉 去吃 ' + resultRestaurant.value.name + '！', type: 'success' })
+  showToast({ message: `🎉 去吃 ${resultRestaurant.value.name}！`, type: 'success' })
 }
 
 function spinAgainExclude() {
   if (resultRestaurant.value) {
-    excludedList.value.push(resultRestaurant.value.name)
-    safeSaveExcludedList(excludedList.value)
+    excludedIds.value.push(resultRestaurant.value.id)
   }
   showResult.value = false
   resultRestaurant.value = null
-  nextTick(() => {
-    wheelRef.value?.startSpin()
-  })
+  setTimeout(() => wheelRef.value?.startSpin(), 100)
 }
 
-function navigateToRestaurant() {
-  if (!resultRestaurant.value) return
-  const name = encodeURIComponent(resultRestaurant.value.name)
-  // 高德地图 URI Scheme
-  const amapUrl = `https://uri.amap.com/search?keyword=${name}&src=loveapp`
-  window.location.href = amapUrl
+// 收藏/取消收藏
+function handleToggleFavorite(r) {
+  toggleFavorite(r)
+  showToastMsg(isFavorite(r.id) ? '已收藏，可以在「转圈」中选它了' : '已取消收藏')
 }
 
-function toggleFavorite() {
-  if (!resultRestaurant.value) return
-  const name = resultRestaurant.value.name
-  const idx = favorites.value.indexOf(name)
-  if (idx >= 0) {
-    favorites.value.splice(idx, 1)
-  } else {
-    favorites.value.push(name)
+function handleUnfavorite(r) {
+  toggleFavorite(r)
+  showToastMsg('已取消收藏')
+}
+
+// 定位逻辑
+async function handleAllowLocation() {
+  locating.value = true
+  try {
+    const loc = await getLocationByIP()
+    if (loc) {
+      setLocation(loc.city, loc.lat, loc.lon)
+      showToastMsg(`已定位到 ${loc.city}`)
+    }
+    await searchNearby()
+    locationReady.value = true
+    locating.value = false
+  } catch (e) {
+    locating.value = false
+    showToastMsg('定位失败，请手动选择城市')
   }
-  safeSaveFavorites(favorites.value)
 }
 
-function handleAddRestaurant() {
-  const name = newRestaurantName.value.trim()
-  if (!name) return
-  if (state.restaurants.some(r => r.name === name)) {
-    showToast({ message: '该餐厅已存在', type: 'fail' })
-    return
+// 切换城市
+async function handleChangeCity(city) {
+  showCityPicker.value = false
+  setLocation(city, 0, 0)
+  activeCategory.value = '全部'
+  searchKeyword.value = ''
+  await searchNearby()
+  locationReady.value = true
+  showToastMsg(`已切换到 ${city}`)
+}
+
+// 初始化
+onMounted(async () => {
+  // 自动尝试 IP 定位
+  try {
+    const loc = await getLocationByIP()
+    if (loc) {
+      setLocation(loc.city, loc.lat, loc.lon)
+      locationReady.value = true
+      await searchNearby()
+    }
+  } catch (e) {
+    // 静默失败，等用户手动触发
   }
-  // 随机选一个 emoji
-  const emojis = ['🍜', '🍕', '🥗', '🍚', '🌮', '🍣', '🥘', '🍝', '🍛', '🥪', '🌯', '🥟']
-  const emoji = emojis[Math.floor(Math.random() * emojis.length)]
-  addRestaurant({ name, emoji, distance: '—', rating: 0, tags: [] })
-  newRestaurantName.value = ''
-  showToast({ message: `已添加 ${name}`, type: 'success' })
-}
-
-function confirmDelete(r) {
-  showConfirmDialog({
-    title: '确定删除？',
-    message: `确定删除「${r.name}」吗？`
-  }).then(() => {
-    removeRestaurant(r.name)
-    showToast({ message: `已删除 ${r.name}` })
-  }).catch(() => {})
-}
-
-function resetAllRestaurants() {
-  showConfirmDialog({
-    title: '重置餐厅列表',
-    message: '重置为默认餐厅列表？自定义餐厅将被清除。'
-  }).then(() => {
-    resetRestaurants()
-    excludedList.value = []
-    showToast({ message: '已重置默认餐厅列表', type: 'success' })
-  }).catch(() => {})
-}
-
-// 确保至少有 2 家餐厅可转
-const canSpin = computed(() => restaurantList.value.length >= 2)
+})
 </script>
 
 <style scoped>
 .lunch-page {
   padding-bottom: calc(var(--space-3xl) + var(--safe-bottom));
+  min-height: 100%;
 }
 
-/* 转盘区域 */
+/* ===== Header ===== */
+.lunch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.city-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.city-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.city-arrow {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.capsule-tabs {
+  display: flex;
+  border: 1.5px solid var(--primary);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.capsule-btn {
+  padding: 6px 22px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.capsule-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ===== Tab Content ===== */
+.tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== 转圈 Tab ===== */
 .wheel-section {
   display: flex;
   flex-direction: column;
@@ -320,7 +439,239 @@ const canSpin = computed(() => restaurantList.value.length >= 2)
   text-align: center;
 }
 
-/* 统计卡片 */
+/* ===== 附近 Tab ===== */
+.location-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 32px;
+  text-align: center;
+}
+
+.loc-icon {
+  font-size: 52px;
+  margin-bottom: 16px;
+}
+
+.location-empty h3 {
+  font-size: 17px;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.bp {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp:active {
+  transform: scale(0.96);
+}
+
+.loc-hint {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.location-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  gap: 16px;
+}
+
+.sp {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.location-loading p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* 搜索 + 分类 */
+.filter-bar {
+  padding: 8px 16px 0;
+}
+
+.sb {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.sb input {
+  width: 100%;
+  padding: 10px 14px 10px 36px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  background: #fff;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sb input:focus {
+  border-color: var(--primary);
+}
+
+.sb::before {
+  content: '🔍';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.tags::-webkit-scrollbar {
+  display: none;
+}
+
+.tag {
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.tag.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* POI 列表 */
+.poi-list {
+  padding: 8px 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.poi-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.poi-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.poi-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poi-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.poi-star {
+  color: #F5A623;
+}
+
+.poi-dot {
+  opacity: 0.5;
+}
+
+.poi-addr {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.fav-btn.active {
+  border-color: var(--primary);
+  background: #FFF0F3;
+  color: var(--primary);
+}
+
+.poi-empty {
+  text-align: center;
+  padding: 40px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.poi-foot {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 12px 16px 8px;
+  opacity: 0.7;
+}
+
+/* ===== 统计卡片 ===== */
+.stats-card {
+  margin: 0 16px;
+}
+
 .stats-row {
   display: flex;
   justify-content: center;
@@ -380,7 +731,7 @@ const canSpin = computed(() => restaurantList.value.length >= 2)
   color: var(--text);
 }
 
-/* 结果弹窗 */
+/* ===== 结果弹窗 ===== */
 .result-box {
   padding: var(--space-2xl);
 }
@@ -401,23 +752,46 @@ const canSpin = computed(() => restaurantList.value.length >= 2)
   display: flex;
   gap: var(--space-md);
   justify-content: center;
-  margin-bottom: var(--space-md);
   flex-wrap: wrap;
 }
 
-.result-secondary-actions {
-  display: flex;
-  gap: var(--space-sm);
-  justify-content: center;
+/* ===== 城市选择弹窗 ===== */
+.city-picker {
+  padding: 24px;
 }
 
-.result-secondary-actions .btn-ghost {
-  font-size: var(--font-caption);
-  padding: var(--space-xs) var(--space-md);
+.city-picker h4 {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: var(--text);
 }
 
-/* 餐厅管理 - Vant Collapse */
+.city-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.city-btn {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s;
+}
+
+.city-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ===== 餐厅管理 ===== */
 .manage-card {
+  margin: 0 16px;
   padding: 0;
   overflow: hidden;
 }
@@ -431,16 +805,11 @@ const canSpin = computed(() => restaurantList.value.length >= 2)
   --van-collapse-content-padding: 0 var(--space-xl) var(--space-xl);
 }
 
-.manage-collapse :deep(.van-collapse-item__content) {
-  padding: var(--space-lg) var(--space-xl);
-}
-
 .restaurant-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-  max-height: 240px;
+  max-height: 200px;
   overflow-y: auto;
 }
 
@@ -451,11 +820,6 @@ const canSpin = computed(() => restaurantList.value.length >= 2)
   padding: var(--space-sm) var(--space-md);
   background: var(--warm-pink);
   border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-}
-
-.restaurant-item:active {
-  background: var(--peach);
 }
 
 .r-emoji {
@@ -476,25 +840,33 @@ const canSpin = computed(() => restaurantList.value.length >= 2)
   font-size: 14px;
   cursor: pointer;
   padding: 4px;
-  opacity: 0.5;
-  transition: opacity var(--transition-fast);
+  opacity: 0.6;
 }
 
-.r-delete:active {
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  opacity: 0;
+  z-index: 300;
+  pointer-events: none;
+  max-width: 320px;
+  text-align: center;
+  transition: opacity 0.3s;
+}
+
+.toast.show {
   opacity: 1;
 }
 
-.add-row {
-  display: flex;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-md);
-}
-
-.add-row .input {
-  flex: 1;
-}
-
-/* 移动端适配 */
+/* ===== 移动端适配 ===== */
 @media (min-width: 768px) {
   .lunch-page {
     max-width: 420px;
