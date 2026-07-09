@@ -178,8 +178,19 @@
             <div class="setting-desc" v-else>正在初始化...</div>
           </div>
         </div>
-        <van-button v-if="isAnonymous" size="small" type="primary" @click="showAccountDialog = true">绑定邮箱</van-button>
-        <van-button v-else-if="isAuthenticated" size="small" @click="handleSignOut">退出登录</van-button>
+        <van-button v-if="isAnonymous" size="small" type="primary" @click="showAccountDialog = true">绑定</van-button>
+        <van-button v-else-if="isAuthenticated" size="small" @click="handleSignOut">退出</van-button>
+      </div>
+      <div class="setting-divider"></div>
+      <div class="setting-item" @click="handleWechatLogin">
+        <div class="setting-info">
+          <div class="setting-icon">💬</div>
+          <div class="setting-text">
+            <div class="setting-label">微信登录</div>
+            <div class="setting-desc">{{ wechatUser ? '已绑定微信' : '绑定微信账号，跨设备同步数据' }}</div>
+          </div>
+        </div>
+        <div class="setting-arrow">›</div>
       </div>
       <!-- 绑定邮箱弹窗 -->
       <Teleport to="body">
@@ -225,9 +236,11 @@ import { getLoveDays } from '../composables/useStreak.js'
 import { useReminder } from '../composables/useReminder.js'
 import { useTheme } from '../composables/useTheme.js'
 import { useDatabase } from '../composables/useDatabase.js'
+import { useWechat } from '../composables/useWechat.js'
 
 const { isDark, toggleDarkMode } = useTheme()
-const { user, isAuthenticated, isAnonymous, signInAnonymously, signUp, signOut, migrateLocalData } = useDatabase()
+const { user, isAuthenticated, isAnonymous, signInAnonymously, signUp, signIn, signOut, migrateLocalData } = useDatabase()
+const { signInWithWechat, wechatError } = useWechat()
 const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
 const router = useRouter()
 
@@ -279,11 +292,16 @@ async function handleSignOut() {
       message: '退出后数据将仅保存在本设备，云端数据不会删除',
     })
     await signOut()
-    // 重新匿名登录
     await signInAnonymously()
     showToast({ message: '已退出登录' })
+  } catch (e) {}
+}
+
+async function handleWechatLogin() {
+  try {
+    await signInWithWechat()
   } catch (e) {
-    // 用户取消
+    showToast({ message: wechatError.value || '微信登录失败', type: 'fail' })
   }
 }
 
