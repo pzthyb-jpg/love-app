@@ -32,13 +32,14 @@
           </div>
         </div>
         <div class="setting-action">
-          <van-dropdown-menu>
-            <van-dropdown-item
-              v-model="animationDensity"
-              :options="densityOptions"
-              @change="onDensityChange"
-            />
-          </van-dropdown-menu>
+          <div class="radio-group">
+            <button
+              v-for="opt in densityOptions"
+              :key="opt.value"
+              :class="['radio-btn', { active: animationDensity === opt.value }]"
+              @click="onDensityChange(opt.value)"
+            >{{ opt.text }}</button>
+          </div>
         </div>
       </div>
       <div class="setting-divider"></div>
@@ -631,5 +632,26 @@ function clearAllData() {
   color: var(--primary);
   font-weight: 500;
   cursor: pointer;
+}
+
+/* RED-2: 动画密度选择器 */
+.radio-group {
+  display: flex;
+  gap: 8px;
+}
+.radio-btn {
+  padding: 6px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.radio-btn.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
 }
 </style>
