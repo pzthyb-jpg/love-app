@@ -130,7 +130,7 @@ import { getTodaysMessage, formatMessageText } from '../composables/useMessages.
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS, KEY_ANIMATION_DENSITY } from '../composables/useStorage.js'
 
 const router = useRouter()
-const { state, markMessageDisplayed } = useDataStore()
+const { state, markMessageDisplayed, addQuickCheckin } = useDataStore()
 
 const girlfriendName = computed(() => state.girlfriendName || '')
 
@@ -289,7 +289,7 @@ function handleTitleClick() {
 }
 
 const quickCheckin = () => {
-  if (store.addQuickCheckin(getTodayStr())) {
+  if (addQuickCheckin(getTodayStr())) {
     showToast('✅ 已打卡')
   }
 }

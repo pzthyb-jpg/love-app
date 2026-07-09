@@ -80,16 +80,8 @@
 
     <!-- Tab: 附近 -->
     <div v-show="activeTab === 'nearby'" class="tab-content">
-      <!-- 未定位：空状态 -->
-      <div v-if="!locationReady" class="location-empty">
-        <div class="loc-icon">📍</div>
-        <h3>开启定位，发现身边好去处</h3>
-        <button class="bp" @click="handleAllowLocation">允许定位</button>
-        <p class="loc-hint">仅获取城市级位置，保护你的隐私</p>
-      </div>
-
       <!-- 定位中 -->
-      <div v-else-if="locating" class="location-loading">
+      <div v-if="locating" class="location-loading">
         <div class="sp"></div>
         <p>正在定位你所在的城市...</p>
       </div>
@@ -191,11 +183,10 @@ import { getTodayStr } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 import { launchConfetti } from '../utils/confetti.js'
 import { useDataStore } from '../stores/dataStore.js'
-import { getLocationByIP } from '../composables/useLocation.js'
 import {
   favorites, restaurants, currentCity, userLat, userLon,
   categories, activeCategory, searchKeyword, locating,
-  filteredRestaurants, searchNearby, toggleFavorite, isFavorite, spinWheel, setLocation
+  filteredRestaurants, searchNearby, locateAndSearch, toggleFavorite, isFavorite, spinWheel, setLocation
 } from '../composables/useRestaurants.js'
 
 const { state, addLunchRecord } = useDataStore()
@@ -204,9 +195,6 @@ const { state, addLunchRecord } = useDataStore()
 const activeTab = ref('wheel')
 const showCityPicker = ref(false)
 const availableCities = ['北京', '上海', '深圳', '成都', '杭州']
-
-// 定位状态
-const locationReady = ref(false)
 
 // 转圈相关
 const wheelRef = ref(null)
@@ -311,48 +299,23 @@ function handleUnfavorite(r) {
   showToastMsg('已取消收藏')
 }
 
-// 定位逻辑
-async function handleAllowLocation() {
-  locating.value = true
-  try {
-    const loc = await getLocationByIP()
-    if (loc) {
-      setLocation(loc.city, loc.lat, loc.lon)
-      showToastMsg(`已定位到 ${loc.city}`)
-    }
-    await searchNearby()
-    locationReady.value = true
-    locating.value = false
-  } catch (e) {
-    locating.value = false
-    showToastMsg('定位失败，请手动选择城市')
-  }
-}
-
 // 切换城市
 async function handleChangeCity(city) {
   showCityPicker.value = false
-  setLocation(city, 0, 0)
-  activeCategory.value = '全部'
-  searchKeyword.value = ''
-  await searchNearby()
-  locationReady.value = true
-  showToastMsg(`已切换到 ${city}`)
+  locating.value = true
+  try {
+    setLocation(city, 0, 0)
+    await searchNearby()
+    showToastMsg(`已切换到 ${city}`)
+  } catch (e) {
+    showToastMsg('搜索失败，请稍后重试')
+  }
+  locating.value = false
 }
 
-// 初始化
+// 初始化：自动定位 + 搜索附近
 onMounted(async () => {
-  // 自动尝试 IP 定位
-  try {
-    const loc = await getLocationByIP()
-    if (loc) {
-      setLocation(loc.city, loc.lat, loc.lon)
-      locationReady.value = true
-      await searchNearby()
-    }
-  } catch (e) {
-    // 静默失败，等用户手动触发
-  }
+  await locateAndSearch()
 })
 </script>
 
@@ -440,47 +403,6 @@ onMounted(async () => {
 }
 
 /* ===== 附近 Tab ===== */
-.location-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 32px;
-  text-align: center;
-}
-
-.loc-icon {
-  font-size: 52px;
-  margin-bottom: 16px;
-}
-
-.location-empty h3 {
-  font-size: 17px;
-  color: var(--text);
-  margin-bottom: 16px;
-}
-
-.bp {
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  padding: 12px 32px;
-  border-radius: 24px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.bp:active {
-  transform: scale(0.96);
-}
-
-.loc-hint {
-  margin-top: 12px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
 .location-loading {
   display: flex;
   flex-direction: column;
@@ -864,6 +786,29 @@ onMounted(async () => {
 
 .toast.show {
   opacity: 1;
+}
+
+/* ===== Dialog Overlay (Teleport) ===== */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 320px;
+  width: 85%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 /* ===== 移动端适配 ===== */

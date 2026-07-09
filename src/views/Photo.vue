@@ -980,4 +980,27 @@ onUnmounted(() => {
   color: var(--primary);
   font-weight: 500;
 }
+
+/* ===== Dialog Overlay (Teleport) ===== */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 320px;
+  width: 85%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
 </style>

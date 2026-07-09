@@ -1,6 +1,7 @@
 // useRestaurants.js — 餐厅搜索、收藏、转圈逻辑（高德 POI 直连）
 import { ref, computed } from 'vue'
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from './useStorage.js'
+import { getLocation } from './useLocation.js'
 
 const AMAP_KEY = import.meta.env?.VITE_AMAP_KEY || ''
 const AMAP_BASE = 'https://restapi.amap.com/v3'
@@ -16,6 +17,7 @@ const categories = ['全部', '火锅', '日料', '西餐', '快餐', '甜点', 
 const activeCategory = ref('全部')
 const searchKeyword = ref('')
 const locating = ref(false)
+const locationReady = ref(false)
 
 // ========== 计算属性 ==========
 
@@ -63,7 +65,7 @@ function formatDistance(meters) {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`
 }
 
-// ========== POI 搜索 ==========
+// ========== POI 搜索（基于坐标） ==========
 
 async function searchNearby(keyword = '', category = '餐厅', city = currentCity.value) {
   if (!AMAP_KEY) {
@@ -72,18 +74,19 @@ async function searchNearby(keyword = '', category = '餐厅', city = currentCit
   }
 
   try {
-    // 构建搜索关键词
     const searchTerm = keyword || category
-    const params = new URLSearchParams({
-      key: AMAP_KEY,
-      keywords: searchTerm,
-      city: city,
-      offset: 20,
-      page: 1,
-      extensions: 'all'
-    })
 
-    const res = await fetch(`${AMAP_BASE}/place/text?${params}`)
+    // 如果有用户坐标，用周边搜索（更精确）
+    let url
+    if (userLat.value && userLon.value) {
+      // 周边搜索：基于用户坐标 + 半径 3000m
+      url = `${AMAP_BASE}/place/around?key=${AMAP_KEY}&location=${userLon.value},${userLat.value}&keywords=${encodeURIComponent(searchTerm)}&radius=3000&offset=20&page=1&extensions=all`
+    } else {
+      // 城市搜索：fallback
+      url = `${AMAP_BASE}/place/text?key=${AMAP_KEY}&keywords=${encodeURIComponent(searchTerm)}&city=${city}&offset=20&page=1&extensions=all`
+    }
+
+    const res = await fetch(url)
     if (!res.ok) throw new Error('POI 搜索失败')
     const data = await res.json()
 
@@ -91,13 +94,11 @@ async function searchNearby(keyword = '', category = '餐厅', city = currentCit
       restaurants.value = data.pois.map(p => {
         const lat = p.location ? parseFloat(p.location.split(',')[1]) : 0
         const lon = p.location ? parseFloat(p.location.split(',')[0]) : 0
-        // 计算距离（如果有用户位置）
+        // 计算真实距离
         let distance = '—'
         if (userLat.value && userLon.value && lat && lon) {
           const distM = haversineDistance(userLat.value, userLon.value, lat, lon)
           distance = formatDistance(distM)
-        } else if (p.distance) {
-          distance = formatDistance(parseInt(p.distance))
         }
 
         return {
@@ -119,6 +120,26 @@ async function searchNearby(keyword = '', category = '餐厅', city = currentCit
   } catch (e) {
     console.warn('POI search failed:', e)
     return []
+  }
+}
+
+// ========== 定位 + 搜索 ==========
+
+async function locateAndSearch() {
+  locating.value = true
+  try {
+    const loc = await getLocation()
+    if (loc) {
+      currentCity.value = loc.city
+      userLat.value = loc.lat
+      userLon.value = loc.lon
+    }
+    await searchNearby()
+    locationReady.value = true
+    locating.value = false
+  } catch (e) {
+    locating.value = false
+    console.warn('定位失败:', e)
   }
 }
 
@@ -156,7 +177,7 @@ function setLocation(city, lat, lon) {
 
 export {
   restaurants, favorites, currentCity, userLat, userLon,
-  categories, activeCategory, searchKeyword, locating,
+  categories, activeCategory, searchKeyword, locating, locationReady,
   filteredRestaurants,
-  searchNearby, toggleFavorite, isFavorite, spinWheel, setLocation, mapCategoryToEmoji
+  searchNearby, locateAndSearch, toggleFavorite, isFavorite, spinWheel, setLocation, mapCategoryToEmoji
 }
