@@ -41,6 +41,8 @@ const DARK_VARS = {
   '--van-tabbar-background-color': '#1A1A1A',
   '--van-tabbar-item-color': '#9B9B9E',
   '--van-tabbar-item-active-color': '#C46B7D',
+  '--van-background-2': '#1A1A1A',
+  '--van-background-3': '#1E1E1E',
   '--van-cell-background': '#1E1E1E',
   '--van-cell-border-color': 'rgba(255, 255, 255, 0.06)',
   '--van-cell-value-color': '#9B9B9E',
