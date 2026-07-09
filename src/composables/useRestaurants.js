@@ -1,8 +1,9 @@
-// useRestaurants.js — 餐厅搜索、收藏、转圈逻辑
+// useRestaurants.js — 餐厅搜索、收藏、转圈逻辑（高德 POI 直连）
 import { ref, computed } from 'vue'
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from './useStorage.js'
 
-const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'https://db.przdbhvydkivybvgjlox.supabase.co'
+const AMAP_KEY = import.meta.env?.VITE_AMAP_KEY || ''
+const AMAP_BASE = 'https://restapi.amap.com/v3'
 
 // ========== 状态 ==========
 
@@ -30,13 +31,14 @@ const filteredRestaurants = computed(() => {
   return list
 })
 
-// ========== 方法 ==========
+// ========== 工具函数 ==========
 
 function mapCategoryToEmoji(type) {
   const map = {
     '火锅': '🍲', '日料': '🍣', '西餐': '🍝', '快餐': '🍔', '甜点': '🍰',
     '咖啡': '☕', '烧烤': '🍖', '粤菜': '🥢', '湘菜': '🌶️', '餐厅': '🍽️',
-    '面馆': '🍜', '饺子': '🥟', '韩国料理': '🍚', '泰国菜': '🍲', '鱼': '🐟'
+    '面馆': '🍜', '饺子': '🥟', '韩国料理': '🍚', '泰国菜': '🍲', '鱼': '🐟',
+    '面包': '🥐', '粥': '🥣', '自助': '🍱', '海鲜': '🦐'
   }
   for (const [key, emoji] of Object.entries(map)) {
     if (type?.includes(key)) return emoji
@@ -44,32 +46,73 @@ function mapCategoryToEmoji(type) {
   return '🍽️'
 }
 
+// Haversine 公式计算两点距离（米）
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+function formatDistance(meters) {
+  if (!meters || isNaN(meters)) return '—'
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`
+}
+
+// ========== POI 搜索 ==========
+
 async function searchNearby(keyword = '', category = '餐厅', city = currentCity.value) {
+  if (!AMAP_KEY) {
+    console.warn('未配置高德 API Key')
+    return []
+  }
+
   try {
+    // 构建搜索关键词
+    const searchTerm = keyword || category
     const params = new URLSearchParams({
-      keyword: keyword || category,
-      city,
-      lat: userLat.value,
-      lon: userLon.value,
-      radius: 3000,
-      offset: 20
+      key: AMAP_KEY,
+      keywords: searchTerm,
+      city: city,
+      offset: 20,
+      page: 1,
+      extensions: 'all'
     })
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/search-restaurants?${params}`)
-    if (!res.ok) throw new Error('搜索失败')
+
+    const res = await fetch(`${AMAP_BASE}/place/text?${params}`)
+    if (!res.ok) throw new Error('POI 搜索失败')
     const data = await res.json()
+
     if (data.status === '1' && data.pois) {
-      restaurants.value = data.pois.map(p => ({
-        id: p.id || p.name,
-        name: p.name,
-        emoji: mapCategoryToEmoji(p.type),
-        distance: p.distance ? `${p.distance}m` : '—',
-        rating: p.rating || 4.0,
-        tags: p.type ? p.type.split(';').slice(0, 3) : [],
-        address: p.address,
-        lat: p.location ? parseFloat(p.location.split(',')[1]) : 0,
-        lon: p.location ? parseFloat(p.location.split(',')[0]) : 0,
-        source: 'amap'
-      }))
+      restaurants.value = data.pois.map(p => {
+        const lat = p.location ? parseFloat(p.location.split(',')[1]) : 0
+        const lon = p.location ? parseFloat(p.location.split(',')[0]) : 0
+        // 计算距离（如果有用户位置）
+        let distance = '—'
+        if (userLat.value && userLon.value && lat && lon) {
+          const distM = haversineDistance(userLat.value, userLon.value, lat, lon)
+          distance = formatDistance(distM)
+        } else if (p.distance) {
+          distance = formatDistance(parseInt(p.distance))
+        }
+
+        return {
+          id: p.id || p.name,
+          name: p.name,
+          emoji: mapCategoryToEmoji(p.type),
+          distance,
+          rating: p.rating ? parseFloat(p.rating) : 4.0,
+          tags: p.type ? p.type.split(';').slice(0, 3) : [],
+          address: p.address || '',
+          lat,
+          lon,
+          source: 'amap'
+        }
+      })
       return restaurants.value
     }
     return []
@@ -78,6 +121,8 @@ async function searchNearby(keyword = '', category = '餐厅', city = currentCit
     return []
   }
 }
+
+// ========== 收藏管理 ==========
 
 function toggleFavorite(restaurant) {
   const idx = favorites.value.findIndex(f => f.id === restaurant.id)
@@ -93,11 +138,15 @@ function isFavorite(id) {
   return favorites.value.some(f => f.id === id)
 }
 
+// ========== 转圈逻辑 ==========
+
 function spinWheel(excludedIds = []) {
   const candidates = favorites.value.filter(f => !excludedIds.includes(f.id))
   if (candidates.length === 0) return null
   return candidates[Math.floor(Math.random() * candidates.length)]
 }
+
+// ========== 位置设置 ==========
 
 function setLocation(city, lat, lon) {
   currentCity.value = city
