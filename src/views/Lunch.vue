@@ -185,7 +185,7 @@ import { launchConfetti } from '../utils/confetti.js'
 import { useDataStore } from '../stores/dataStore.js'
 import {
   favorites, restaurants, currentCity, userLat, userLon,
-  categories, activeCategory, searchKeyword, locating,
+  categories, activeCategory, searchKeyword, locating, locationReady,
   filteredRestaurants, searchNearby, locateAndSearch, toggleFavorite, isFavorite, spinWheel, setLocation
 } from '../composables/useRestaurants.js'
 
@@ -194,7 +194,7 @@ const { state, addLunchRecord } = useDataStore()
 // Tab 状态
 const activeTab = ref('wheel')
 const showCityPicker = ref(false)
-const availableCities = ['北京', '上海', '深圳', '成都', '杭州']
+const availableCities = ['北京', '上海', '深圳', '成都', '杭州', '宁波', '温州', '绍兴']
 
 // 转圈相关
 const wheelRef = ref(null)

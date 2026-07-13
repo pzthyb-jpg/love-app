@@ -1,32 +1,42 @@
-// dataStore.js — 响应式数据层
+// dataStore.js — Supabase 响应式数据层 (从 localStorage 迁移)
 import { showToast } from 'vant'
-import { reactive, toRefs } from 'vue'
+import { reactive, computed } from 'vue'
+import { useDatabase } from '../composables/useDatabase.js'
 import {
   STORAGE_KEYS,
-  safeGetJSON,
-  safeSetJSON,
   safeGetString,
   safeSetString,
-  savePhoto,
-  setSyncCheckinHistoryCallback
+  safeGetJSON,
+  safeSetJSON,
 } from '../composables/useStorage.js'
-import { hashPassword, verifyPassword, validatePasswordStrength, isLegacyHashFormat } from '../composables/usecrypto.js'
+import { hashPassword as _hp, verifyPassword as _vp, validatePasswordStrength, isLegacyHashFormat } from '../composables/usecrypto.js'
 
-// 检查写入结果，失败时弹出 Toast 提示
-function checkWriteResult(success, key) {
-  if (!success) {
-    showToast({ message: `💾 写入 ${STORAGE_KEYS[key] || key} 失败，存储空间可能已满`, type: 'fail' })
-  }
-  return success
-}
+const db = useDatabase()
 
-// 响应式状态
+// ========== 响应式状态 ==========
 const state = reactive({
-  checkinHistory: safeGetJSON(STORAGE_KEYS.CHECKIN_HISTORY, []),
-  wishes: safeGetJSON(STORAGE_KEYS.WISHES, []),
-  girlfriendName: safeGetString('girlfriend_name', ''),
-  boyfriendName: safeGetString('boyfriend_name', '男朋友'),
-  restaurants: safeGetJSON(STORAGE_KEYS.RESTAURANTS, [
+  // 用户数据 (从 Supabase 加载)
+  checkinHistory: [],
+  wishes: [],
+  messages: [],
+  anniversaries: [],
+  lunchHistory: [],
+  restaurantPrefs: [],
+  settings: null,           // user_settings 记录
+  checkinStats: null,       // checkin_stats 记录
+
+  // 本地设置 (保留 localStorage)
+  restaurants: loadRestaurants(),
+  adminPassword: { hash: '', salt: '', legacyHash: '' },
+
+  // UI 状态
+  isDataLoaded: false,
+})
+
+// ========== 本地存储保留项 (admin + defaults) ==========
+
+function loadRestaurants() {
+  return safeGetJSON(STORAGE_KEYS.RESTAURANTS, [
     { name: '饺子馆', emoji: '🥟', distance: '0.8km', rating: 4.5, tags: ['面食', '实惠'] },
     { name: '兰州拉面', emoji: '🍜', distance: '0.5km', rating: 4.2, tags: ['面食', '快餐'] },
     { name: '轻食沙拉', emoji: '🥗', distance: '1.2km', rating: 4.0, tags: ['健康', '轻食'] },
@@ -37,178 +47,393 @@ const state = reactive({
     { name: '港式茶餐厅', emoji: '🍵', distance: '0.9km', rating: 4.7, tags: ['茶餐厅', '经典'] },
     { name: '越南河粉', emoji: '🍲', distance: '1.3km', rating: 4.2, tags: ['东南亚', '清淡'] },
     { name: '麻辣香锅', emoji: '🔥', distance: '0.7km', rating: 4.5, tags: ['辣', '川菜'] }
-  ]),
-  lunchHistory: safeGetJSON(STORAGE_KEYS.LUNCH_HISTORY, []),
-  messages: safeGetJSON(STORAGE_KEYS.MESSAGES, []),
-  checkinStreak: safeGetJSON(STORAGE_KEYS.CHECKIN_STREAK, {
-    streakDays: 0,
-    lastCheckinDate: '',
-    longestStreak: 0,
-    initialized: false
-  }),
-  checkinBadges: safeGetJSON(STORAGE_KEYS.CHECKIN_BADGES, []),
-  loveAnniversary: safeGetString(STORAGE_KEYS.LOVE_ANNIVERSARY, ''),
-  notificationEnabled: safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true',
-  anniversaries: safeGetJSON(STORAGE_KEYS.ANNIVERSARIES, []),
-  // 密码哈希值（PBKDF2-SHA256 格式）
-  adminPassword: { hash: '', salt: '', legacyHash: '' }
-})
+  ])
+}
 
-// 读取密码：新格式 { hash, salt } 字符串，或旧 SHA-256 迁移
 function safeGetPassword() {
   const stored = safeGetString(STORAGE_KEYS.ADMIN_PASSWORD, '')
-  if (!stored) {
-    // 首次使用：返回空，需要管理员自行设置密码
-    return { hash: '', salt: '', legacyHash: '' }
-  }
-  // 尝试解析新格式：Base64_salt.Base64_hash
+  if (!stored) return { hash: '', salt: '', legacyHash: '' }
   if (stored.includes('.')) {
     const parts = stored.split('.')
-    if (parts.length === 2) {
-      return { hash: parts[1], salt: parts[0], legacyHash: '' }
-    }
+    if (parts.length === 2) return { hash: parts[1], salt: parts[0], legacyHash: '' }
   }
-  // 检测到 old SHA-256 格式（旧哈希，需要迁移）
   if (isLegacyHashFormat(stored)) {
-    // 异步将旧哈希升级到 PBKDF2
-    const defaultSalt = new Uint8Array(16)
-    for (let i = 0; i < 16; i++) defaultSalt[i] = i // 固定盐，待首次登录后替换
-    hashPassword(stored, defaultSalt).then(({ hash, salt }) => {
-      const newFormat = `${salt}.${hash}`
-      safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, newFormat)
-      state.adminPassword = { hash, salt, legacyHash: '' }
-    }).catch(() => {
-      // 无法升级时抛出错误，不再保留明文或旧格式
-      console.error('密码哈希升级失败')
-    })
     return { hash: '', salt: '', legacyHash: stored }
   }
   return { hash: '', salt: '', legacyHash: '' }
 }
 
-// 初始化密码状态
 state.adminPassword = safeGetPassword()
 
-// 自动清理存储回调：安全替代 window.__syncCheckinHistory
-setSyncCheckinHistoryCallback((cleaned) => {
-  state.checkinHistory = cleaned
+// ========== 计算属性 ==========
+const girlfriendName = computed(() => state.settings?.girlfriend_name || '')
+const boyfriendName = computed(() => state.settings?.boyfriend_name || '男朋友')
+const loveAnniversary = computed(() => state.settings?.love_anniversary || '')
+const notificationEnabled = computed(() => state.settings?.notification_enabled !== false)
+const themePref = computed(() => state.settings?.theme_pref || 'light')
+const reminderTime = computed(() => state.settings?.reminder_time || 'noon')
+const customReminderTime = computed(() => state.settings?.custom_reminder_time || '12:00')
+
+// 打卡统计（优先从 checkin_stats 加载，否则从历史计算）
+const checkinStreak = computed(() => {
+  if (state.checkinStats) {
+    return {
+      streakDays: state.checkinStats.streak_days,
+      lastCheckinDate: state.checkinStats.last_checkin_date,
+      longestStreak: state.checkinStats.longest_streak,
+      initialized: true
+    }
+  }
+  // 从历史计算
+  return calculateStreakFromHistory(state.checkinHistory)
 })
 
-// 操作函数
-function addCheckin(record) {
-  state.checkinHistory.unshift(record)
-  savePhoto(record)
-}
+// ========== 数据加载 ==========
 
-function addQuickCheckin(dateStr) {
-  const today = dateStr || getTodayStr()
-  if (state.checkinHistory.some(h => h.date === today)) return false
-  state.checkinHistory.unshift({ date: today, type: 'quick' })
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_HISTORY, state.checkinHistory), 'CHECKIN_HISTORY')
-  return true
-}
+async function loadAllData() {
+  if (!db.isAuthenticated.value) {
+    state.checkinHistory = []
+    state.wishes = []
+    state.messages = []
+    state.anniversaries = []
+    state.lunchHistory = []
+    state.restaurantPrefs = []
+    state.settings = null
+    state.checkinStats = null
+    state.isDataLoaded = false
+    return
+  }
 
-function addWish(wish) {
-  state.wishes.unshift(wish)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.WISHES, state.wishes), 'WISHES')
-}
+  try {
+    const [checkins, wishes, messages, anniversaries, lunchHistory, prefs, settings, stats] = await Promise.all([
+      db.getCheckins(),
+      db.getWishes(),
+      db.getMessages(),
+      db.getAnniversaries(),
+      db.getLunchHistory(),
+      db.getRestaurantPrefs(),
+      db.getSettings(),
+      db.getCheckinStats(),
+    ])
 
-function updateWish(id, updates) {
-  const idx = state.wishes.findIndex(w => w.id === id)
-  if (idx !== -1) {
-    state.wishes[idx] = { ...state.wishes[idx], ...updates }
-    checkWriteResult(safeSetJSON(STORAGE_KEYS.WISHES, state.wishes), 'WISHES')
+    state.checkinHistory = checkins || []
+    state.wishes = wishes || []
+    state.messages = messages || []
+    state.anniversaries = anniversaries || []
+    state.lunchHistory = lunchHistory || []
+    state.restaurantPrefs = prefs || []
+    state.settings = settings
+    state.checkinStats = stats
+    state.isDataLoaded = true
+  } catch (e) {
+    console.error('加载数据失败:', e)
+    state.isDataLoaded = false
   }
 }
 
-function deleteWish(id) {
-  state.wishes = state.wishes.filter(w => w.id !== id)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.WISHES, state.wishes), 'WISHES')
+// ========== 设置操作 ==========
+
+async function updateSettings(updates) {
+  const result = await db.updateSettings(updates)
+  if (!result.error && state.settings) {
+    Object.assign(state.settings, updates)
+  } else if (!result.error) {
+    state.settings = { ...state.settings, ...updates }
+  }
+  return result
 }
 
-function addLunchRecord(record) {
-  state.lunchHistory.unshift(record)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.LUNCH_HISTORY, state.lunchHistory), 'LUNCH_HISTORY')
+function setGirlfriendName(name) {
+  updateSettings({ girlfriend_name: name })
 }
+
+function setBoyfriendName(name) {
+  updateSettings({ boyfriend_name: name })
+}
+
+function setAnniversary(dateStr) {
+  updateSettings({ love_anniversary: dateStr })
+}
+
+function setNotificationEnabled(enabled) {
+  updateSettings({ notification_enabled: enabled })
+}
+
+function setThemePref(theme) {
+  updateSettings({ theme_pref: theme })
+}
+
+// ========== 打卡操作 ==========
+
+async function addCheckin(record) {
+  const result = await db.addCheckin(record)
+  if (result.data) {
+    state.checkinHistory.unshift(result.data)
+    // 更新统计
+    await recalculateStreak()
+    showToast({ message: '✅ 打卡成功', type: 'success' })
+  } else {
+    showToast({ message: result.error?.message || '打卡失败', type: 'fail' })
+  }
+  return result
+}
+
+async function addQuickCheckin(dateStr) {
+  const today = dateStr || getTodayStr()
+  if (state.checkinHistory.some(h => h.date === today)) {
+    showToast({ message: '今天已打卡', type: 'fail' })
+    return false
+  }
+  const result = await db.addCheckin({ date: today, type: 'quick' })
+  if (result.data) {
+    state.checkinHistory.unshift(result.data)
+    await recalculateStreak()
+    showToast({ message: '✅ 打卡成功', type: 'success' })
+    return true
+  }
+  return false
+}
+
+async function recalculateStreak() {
+  const streakData = calculateStreakFromHistory(state.checkinHistory)
+  if (!state.checkinHistory.length) return
+
+  const statsData = {
+    streak_days: streakData.streakDays,
+    last_checkin_date: streakData.lastCheckinDate,
+    longest_streak: streakData.longestStreak,
+    total_checkins: state.checkinHistory.length,
+  }
+
+  const result = await db.updateCheckinStats(statsData)
+  if (result.data) {
+    state.checkinStats = result.data
+  }
+}
+
+function calculateStreakFromHistory(history) {
+  if (!history || history.length === 0) {
+    return { streakDays: 0, lastCheckinDate: '', longestStreak: 0, initialized: false }
+  }
+
+  const dates = [...new Set(history.map(h => h.date))].sort().reverse()
+  const today = getTodayStr()
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = formatDate(yesterday)
+
+  let streakDays = 0
+  let lastCheckinDate = dates[0] || ''
+
+  // 只有今天或昨天打过卡才算连续
+  if (lastCheckinDate === today || lastCheckinDate === yesterdayStr) {
+    let checkDate = lastCheckinDate
+    for (const d of dates) {
+      if (d === checkDate) {
+        streakDays++
+        const prev = new Date(checkDate)
+        prev.setDate(prev.getDate() - 1)
+        checkDate = formatDate(prev)
+      } else {
+        break
+      }
+    }
+  }
+
+  // 计算最长连续
+  let longestStreak = streakDays
+  if (dates.length > 1) {
+    let current = 1
+    for (let i = 0; i < dates.length - 1; i++) {
+      const d1 = new Date(dates[i])
+      const d2 = new Date(dates[i + 1])
+      const diff = (d1 - d2) / 86400000
+      if (diff <= 1) {
+        current++
+        longestStreak = Math.max(longestStreak, current)
+      } else {
+        current = 1
+      }
+    }
+  }
+
+  return { streakDays, lastCheckinDate, longestStreak, initialized: true }
+}
+
+// ========== 愿望操作 ==========
+
+async function addWish(wish) {
+  const result = await db.addWish(wish)
+  if (result.data) {
+    state.wishes.unshift({
+      ...wish,
+      id: result.data.id,
+    })
+    showToast({ message: '✨ 愿望已添加', type: 'success' })
+  } else {
+    console.error('[addWish] Supabase 返回错误:', result.error)
+    showToast({ message: result.error?.message || '添加失败', type: 'fail' })
+  }
+  return result
+}
+
+async function updateWish(id, updates) {
+  const dbUpdates = { ...updates }
+  if (updates.text !== undefined) {
+    dbUpdates.title = updates.text
+    delete dbUpdates.text
+  }
+  const result = await db.updateWish(id, dbUpdates)
+  if (result.data) {
+    const idx = state.wishes.findIndex(w => w.id === id)
+    if (idx !== -1) state.wishes[idx] = { ...state.wishes[idx], ...updates }
+    showToast({ message: '✅ 已更新', type: 'success' })
+  } else {
+    showToast({ message: result.error?.message || '更新失败', type: 'fail' })
+  }
+  return result
+}
+
+async function deleteWish(id) {
+  const result = await db.deleteWish(id)
+  if (result.data) {
+    state.wishes = state.wishes.filter(w => w.id !== id)
+    showToast({ message: '🗑️ 已删除', type: 'success' })
+  } else {
+    showToast({ message: result.error?.message || '删除失败', type: 'fail' })
+  }
+  return result
+}
+
+// ========== 消息操作 ==========
+
+async function addMessage(msg) {
+  const result = await db.addMessage(msg)
+  if (result.data) {
+    state.messages.unshift(result.data)
+    showToast({ message: '💌 消息已添加', type: 'success' })
+  } else {
+    showToast({ message: result.error?.message || '添加失败', type: 'fail' })
+  }
+  return result
+}
+
+async function updateMessage(id, updates) {
+  const result = await db.updateMessage(id, updates)
+  if (result.data) {
+    const idx = state.messages.findIndex(m => m.id === id)
+    if (idx !== -1) state.messages[idx] = result.data
+  }
+  return result
+}
+
+async function deleteMessage(id) {
+  const result = await db.deleteMessage(id)
+  if (result.data) {
+    state.messages = state.messages.filter(m => m.id !== id)
+  }
+  return result
+}
+
+async function markMessageDisplayed(messageId, dateStr) {
+  const msg = state.messages.find(m => m.id === messageId)
+  if (!msg) return
+  if (!msg.displayed_dates) msg.displayed_dates = []
+  if (!msg.displayed_dates.includes(dateStr)) {
+    msg.displayed_dates.push(dateStr)
+    // 异步同步到 Supabase
+    await db.updateMessage(messageId, { displayed_dates: msg.displayed_dates })
+  }
+}
+
+// ========== 纪念日操作 ==========
+
+async function addAnniversary(data) {
+  const result = await db.addAnniversary({
+    name: data.name,
+    date: data.date,
+    type: data.type,
+    emoji: data.emoji,
+    remark: data.remark,
+    remind_days: data.remindDays || data.remind_days || [3],
+  })
+  if (result.data) {
+    state.anniversaries.unshift(result.data)
+    showToast({ message: '💕 纪念日已添加', type: 'success' })
+    // 按日期排序
+    state.anniversaries.sort((a, b) => new Date(a.date) - new Date(b.date))
+  } else {
+    showToast({ message: result.error?.message || '添加失败', type: 'fail' })
+  }
+  return result
+}
+
+async function updateAnniversary(id, updates) {
+  const result = await db.updateAnniversary(id, updates)
+  if (result.data) {
+    const idx = state.anniversaries.findIndex(a => a.id === id)
+    if (idx !== -1) state.anniversaries[idx] = result.data
+  }
+  return result
+}
+
+async function deleteAnniversary(id) {
+  const result = await db.deleteAnniversary(id)
+  if (result.data) {
+    state.anniversaries = state.anniversaries.filter(a => a.id !== id)
+  }
+  return result
+}
+
+// ========== 餐厅操作 ==========
 
 function addRestaurant(restaurant) {
   state.restaurants.push(restaurant)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants), 'RESTAURANTS')
+  safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants)
 }
 
 function removeRestaurant(name) {
   state.restaurants = state.restaurants.filter(r => r.name !== name)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants), 'RESTAURANTS')
+  safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants)
 }
 
 function resetRestaurants() {
-  state.restaurants = [
-    { name: '饺子馆', emoji: '🥟', distance: '0.8km', rating: 4.5, tags: ['面食', '实惠'] },
-    { name: '兰州拉面', emoji: '🍜', distance: '0.5km', rating: 4.2, tags: ['面食', '快餐'] },
-    { name: '轻食沙拉', emoji: '🥗', distance: '1.2km', rating: 4.0, tags: ['健康', '轻食'] },
-    { name: '日式拉面', emoji: '🍜', distance: '1.0km', rating: 4.6, tags: ['日料', '暖胃'] },
-    { name: '烤肉拌饭', emoji: '🍚', distance: '0.6km', rating: 4.3, tags: ['韩式', '米饭'] },
-    { name: '麻辣烫', emoji: '🌶️', distance: '0.3km', rating: 4.1, tags: ['辣', '暖身'] },
-    { name: '披萨', emoji: '🍕', distance: '1.5km', rating: 4.4, tags: ['西式', '外卖'] },
-    { name: '港式茶餐厅', emoji: '🍵', distance: '0.9km', rating: 4.7, tags: ['茶餐厅', '经典'] },
-    { name: '越南河粉', emoji: '🍲', distance: '1.3km', rating: 4.2, tags: ['东南亚', '清淡'] },
-    { name: '麻辣香锅', emoji: '🔥', distance: '0.7km', rating: 4.5, tags: ['辣', '川菜'] }
-  ]
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.RESTAURANTS, state.restaurants), 'RESTAURANTS')
+  const defaults = loadRestaurants()
+  state.restaurants = defaults
+  safeSetJSON(STORAGE_KEYS.RESTAURANTS, defaults)
 }
 
-function addMessage(msg) {
-  state.messages.push(msg)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
-}
-
-function updateMessage(id, updates) {
-  const idx = state.messages.findIndex(m => m.id === id)
-  if (idx !== -1) {
-    state.messages[idx] = { ...state.messages[idx], ...updates }
-    checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
+async function toggleFavoriteRestaurant(name) {
+  const result = await db.upsertRestaurantPref(name, { is_favorite: true })
+  if (result.data) {
+    const idx = state.restaurantPrefs.findIndex(r => r.name === name)
+    if (idx !== -1) state.restaurantPrefs[idx] = result.data
+    else state.restaurantPrefs.push(result.data)
   }
+  return result
 }
 
-function deleteMessage(id) {
-  state.messages = state.messages.filter(m => m.id !== id)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
-}
-
-/**
- * 标记某条消息在指定日期已展示
- * 更新 displayedDates 并持久化到 localStorage
- */
-function markMessageDisplayed(messageId, dateStr) {
-  const msg = state.messages.find(m => m.id === messageId)
-  if (msg) {
-    if (!msg.displayedDates) msg.displayedDates = []
-    if (!msg.displayedDates.includes(dateStr)) {
-      msg.displayedDates.push(dateStr)
-      checkWriteResult(safeSetJSON(STORAGE_KEYS.MESSAGES, state.messages), 'MESSAGES')
-    }
+async function toggleExcludeRestaurant(name) {
+  const result = await db.upsertRestaurantPref(name, { is_excluded: true })
+  if (result.data) {
+    const idx = state.restaurantPrefs.findIndex(r => r.name === name)
+    if (idx !== -1) state.restaurantPrefs[idx] = result.data
+    else state.restaurantPrefs.push(result.data)
   }
+  return result
 }
 
-function updateStreak(streakData) {
-  Object.assign(state.checkinStreak, streakData)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_STREAK, state.checkinStreak), 'CHECKIN_STREAK')
+// ========== 午餐操作 ==========
+
+async function addLunchRecord(record) {
+  const result = await db.addLunchRecord(record)
+  if (result.data) {
+    state.lunchHistory.unshift(result.data)
+  }
+  return result
 }
 
-function addBadge(badge) {
-  state.checkinBadges.push(badge)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.CHECKIN_BADGES, state.checkinBadges), 'CHECKIN_BADGES')
-}
-
-function setAnniversary(dateStr) {
-  state.loveAnniversary = dateStr
-  safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, dateStr)
-}
-
-function setNotificationEnabled(enabled) {
-  state.notificationEnabled = enabled
-  safeSetString(STORAGE_KEYS.NOTIFICATION_ENABLED, enabled ? 'true' : 'false')
-}
+// ========== Admin 密码 (本地保留) ==========
 
 async function setAdminPassword(password) {
   const validation = validatePasswordStrength(password)
@@ -217,7 +442,7 @@ async function setAdminPassword(password) {
     return false
   }
   try {
-    const { hash, salt } = await hashPassword(password)
+    const { hash, salt } = await _hp(password)
     const storedFormat = `${salt}.${hash}`
     state.adminPassword = { hash, salt, legacyHash: '' }
     safeSetString(STORAGE_KEYS.ADMIN_PASSWORD, storedFormat)
@@ -228,27 +453,17 @@ async function setAdminPassword(password) {
   }
 }
 
-/**
- * 验证管理员密码
- * - 新 PBKDF2 格式：对比 salt + hash
- * - 旧 SHA-256 遗留格式：一次登录成功后自动迁移
- */
 async function verifyAdminPassword(password) {
   const pwd = state.adminPassword
-  // 新格式验证
   if (pwd.hash && pwd.salt) {
-    const matched = await verifyPassword(password, pwd.hash, pwd.salt)
-    return matched
+    return await _vp(password, pwd.hash, pwd.salt)
   }
-  // 旧格式：尝试旧 SHA-256 对比，成功后立即迁移
   if (pwd.legacyHash) {
-    // 把旧 SHA-256 哈希当作明文再次哈希入库（等效迁移）
     const encoder = new TextEncoder()
     const data = encoder.encode(password)
     const hashBuffer = await crypto.subtle.digest('SHA-256', data)
     const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
     if (hashHex === pwd.legacyHash) {
-      // 旧格式验证成功，立即升级到 PBKDF2
       await setAdminPassword(password)
       return true
     }
@@ -256,21 +471,8 @@ async function verifyAdminPassword(password) {
   return false
 }
 
-function setGirlfriendName(name) {
-  state.girlfriendName = name
-  safeSetString('girlfriend_name', name)
-}
+// ========== 纪念日计算函数 ==========
 
-function setBoyfriendName(name) {
-  state.boyfriendName = name
-  safeSetString('boyfriend_name', name)
-}
-
-// ========== 纪念日 CRUD ==========
-
-/**
- * 计算某个纪念日的下次发生日期（今年或明年）
- */
 function getNextOccurrence(dateStr) {
   const original = new Date(dateStr)
   if (isNaN(original.getTime())) return null
@@ -280,9 +482,6 @@ function getNextOccurrence(dateStr) {
   return thisYear >= today ? thisYear : new Date(today.getFullYear() + 1, original.getMonth(), original.getDate())
 }
 
-/**
- * 计算距离下次发生的天数
- */
 function getDaysUntil(dateStr) {
   const next = getNextOccurrence(dateStr)
   if (!next) return 0
@@ -291,9 +490,6 @@ function getDaysUntil(dateStr) {
   return Math.round((next - today) / 86400000)
 }
 
-/**
- * 计算从原始日期到今天的总天数（相守天数）
- */
 function getDaysSince(dateStr) {
   const original = new Date(dateStr)
   if (isNaN(original.getTime())) return 0
@@ -302,81 +498,70 @@ function getDaysSince(dateStr) {
   return Math.floor((today - original) / 86400000)
 }
 
-/**
- * 添加纪念日
- * @param {Object} data - { name, date, type, emoji, remark, remindDays }
- */
-function addAnniversary(data) {
-  const now = new Date().toISOString()
-  const item = {
-    id: `ann_${Date.now()}`,
-    name: data.name,
-    date: data.date,
-    type: data.type,
-    emoji: data.emoji || '💕',
-    remark: data.remark || '',
-    remindDays: data.remindDays || [3],
-    createdAt: now,
-    updatedAt: now
-  }
-  state.anniversaries.unshift(item)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.ANNIVERSARIES, state.anniversaries), 'ANNIVERSARIES')
-  return item
+// ========== 工具 ==========
+
+function getTodayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/**
- * 更新纪念日
- */
-function updateAnniversary(id, updates) {
-  const idx = state.anniversaries.findIndex(a => a.id === id)
-  if (idx !== -1) {
-    state.anniversaries[idx] = {
-      ...state.anniversaries[idx],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    }
-    checkWriteResult(safeSetJSON(STORAGE_KEYS.ANNIVERSARIES, state.anniversaries), 'ANNIVERSARIES')
-  }
+function formatDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/**
- * 删除纪念日
- */
-function deleteAnniversary(id) {
-  state.anniversaries = state.anniversaries.filter(a => a.id !== id)
-  checkWriteResult(safeSetJSON(STORAGE_KEYS.ANNIVERSARIES, state.anniversaries), 'ANNIVERSARIES')
-}
+// ========== 导出 ==========
 
 export function useDataStore() {
   return {
     state,
+    // 状态快捷访问
+    girlfriendName,
+    boyfriendName,
+    loveAnniversary,
+    notificationEnabled,
+    themePref,
+    reminderTime,
+    customReminderTime,
+    checkinStreak,
+    // 加载
+    loadAllData,
+    // 设置
+    updateSettings,
+    setGirlfriendName,
+    setBoyfriendName,
+    setAnniversary,
+    setNotificationEnabled,
+    setThemePref,
+    // 打卡
     addCheckin,
     addQuickCheckin,
+    recalculateStreak,
+    // 愿望
     addWish,
     updateWish,
     deleteWish,
-    addLunchRecord,
-    addRestaurant,
-    removeRestaurant,
-    resetRestaurants,
+    // 消息
     addMessage,
     updateMessage,
     deleteMessage,
     markMessageDisplayed,
-    updateStreak,
-    addBadge,
-    setAnniversary,
-    setNotificationEnabled,
-    setAdminPassword,
-    verifyAdminPassword,
-    setGirlfriendName,
-    setBoyfriendName,
     // 纪念日
     addAnniversary,
     updateAnniversary,
     deleteAnniversary,
     getNextOccurrence,
     getDaysUntil,
-    getDaysSince
+    getDaysSince,
+    // 餐厅
+    addRestaurant,
+    removeRestaurant,
+    resetRestaurants,
+    toggleFavoriteRestaurant,
+    toggleExcludeRestaurant,
+    // 午餐
+    addLunchRecord,
+    // Admin
+    setAdminPassword,
+    verifyAdminPassword,
   }
 }

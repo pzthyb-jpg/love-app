@@ -1,4 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { useAuth } from '../composables/useDatabase.js'
+
+const { isAuthenticated } = useAuth()
 
 const routes = [
   {
@@ -42,12 +45,35 @@ const routes = [
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
     meta: { title: '设置', icon: '⚙️', hidden: true }
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/LoginPage.vue'),
+    meta: { title: '登录', hidden: true }
   }
 ]
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes
+})
+
+// 路由守卫：未登录跳转登录页
+router.beforeEach((to, from, next) => {
+  const isAuth = isAuthenticated.value
+
+  // 已登录访问登录页 → 跳回首页
+  if (to.path === '/login' && isAuth) {
+    return next('/')
+  }
+
+  // 未登录访问其他页面 → 跳转登录页
+  if (to.path !== '/login' && !isAuth) {
+    return next('/login')
+  }
+
+  next()
 })
 
 export default router

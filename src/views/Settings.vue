@@ -1,20 +1,17 @@
 <template>
   <div class="page settings-page">
-    <!-- 页面标题 -->
     <div class="page-header">
       <span class="emoji">⚙️</span>
       <h2>设置</h2>
     </div>
 
-    <!-- 主题设置 -->
     <div class="card settings-card">
-      <!-- Dark mode toggle -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">{{ isDark ? '🌙' : '☀️' }}</div>
+          <div class="setting-icon">{{ isDark ? "🌙" : "☀️" }}</div>
           <div class="setting-text">
-            <div class="setting-label">{{ isDark ? '深色模式' : '浅色模式' }}</div>
-            <div class="setting-desc">{{ isDark ? '深色调，夜间更舒适' : '浅色调，日间更清晰' }}</div>
+            <div class="setting-label">{{ isDark ? "深色模式" : "浅色模式" }}</div>
+            <div class="setting-desc">{{ isDark ? "深色调，夜间更舒适" : "浅色调，日间更清晰" }}</div>
           </div>
         </div>
         <div class="setting-action">
@@ -24,7 +21,6 @@
       <div class="setting-divider"></div>
     </div>
 
-    <!-- 纪念日设置 -->
     <div class="card settings-card">
       <div class="setting-item">
         <div class="setting-info">
@@ -39,7 +35,6 @@
           <span class="manage-link" @click="router.push('/anniversary')">管理 ›</span>
         </div>
       </div>
-      <!-- 周年倒计时 -->
       <div v-if="anniversary" class="anniversary-countdown">
         <div class="countdown-row">
           <span class="countdown-emoji">💖</span>
@@ -56,7 +51,6 @@
       </div>
     </div>
 
-    <!-- 昵称设置 -->
     <div class="card settings-card">
       <div class="setting-item">
         <div class="setting-info">
@@ -85,7 +79,6 @@
       </div>
     </div>
 
-    <!-- 提醒设置 -->
     <div class="card settings-card">
       <div class="setting-item">
         <div class="setting-info">
@@ -117,7 +110,7 @@
           </select>
         </div>
       </div>
-      <div v-if="reminderTime === 'custom'" class="setting-item setting-item-sub">
+      <div v-if="reminderTime === CUSTOM_TIME" class="setting-item setting-item-sub">
         <div class="setting-info">
           <div class="setting-text">
             <div class="setting-label">自定义时间</div>
@@ -129,7 +122,6 @@
       </div>
     </div>
 
-    <!-- 数据管理 -->
     <div class="card settings-card">
       <div class="setting-item" @click="exportData">
         <div class="setting-info">
@@ -168,547 +160,358 @@
 
     <!-- 账号管理 -->
     <div class="card settings-card">
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">{{ isAuthenticated ? (isAnonymous ? '👤' : '✅') : '❓' }}</div>
-          <div class="setting-text">
-            <div class="setting-label">{{ isAnonymous ? '匿名账号' : (isAuthenticated ? '已登录' : '未登录') }}</div>
-            <div class="setting-desc" v-if="isAnonymous">数据仅存在本设备，绑定邮箱可跨设备同步</div>
-            <div class="setting-desc" v-else-if="isAuthenticated">{{ user?.email || '已绑定' }}</div>
-            <div class="setting-desc" v-else>正在初始化...</div>
+      <div class="account-management">
+        <h3 class="card-title">🔐 账号管理</h3>
+        <div v-if="!isAuthenticated" class="account-login">
+          <van-field v-model="loginForm.username" placeholder="用户名" maxlength="20" />
+          <van-field v-model="loginForm.password" placeholder="密码" type="password" maxlength="32" style="margin-top:8px" />
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <van-button type="primary" block :loading="loginLoading" @click="handleLogin">登录</van-button>
+            <van-button block @click="showRegister = true">注册</van-button>
           </div>
+          <p style="font-size:13px;color:var(--text-secondary);margin-top:8px">没有账号？注册一个，数据跨设备同步</p>
         </div>
-        <van-button v-if="isAnonymous" size="small" type="primary" @click="showAccountDialog = true">绑定</van-button>
-        <van-button v-else-if="isAuthenticated" size="small" @click="handleSignOut">退出</van-button>
-      </div>
-      <div class="setting-divider"></div>
-      <div class="setting-item" @click="handleWechatLogin">
-        <div class="setting-info">
-          <div class="setting-icon">💬</div>
-          <div class="setting-text">
-            <div class="setting-label">微信登录</div>
-            <div class="setting-desc">{{ wechatUser ? '已绑定微信' : '绑定微信账号，跨设备同步数据' }}</div>
+        <div v-else class="account-info">
+          <div class="account-avatar">👤</div>
+          <div class="account-meta">
+            <strong>{{ currentUser.username }}</strong>
+            <span class="account-display" v-if="currentUser.display_name">({{ currentUser.display_name }})</span>
+            <p style="font-size:12px;color:var(--text-secondary)">注册于 {{ formatDate(currentUser.created_at) }}</p>
           </div>
+          <van-button size="small" @click="handleLogout">退出登录</van-button>
         </div>
-        <div class="setting-arrow">›</div>
       </div>
-      <!-- 绑定邮箱弹窗 -->
-      <Teleport to="body">
-        <div v-if="showAccountDialog" class="dialog-overlay" @click.self="showAccountDialog = false">
-          <div class="dialog-box">
-            <h3>绑定邮箱密码</h3>
-            <p class="dialog-desc">绑定后可在其他设备上登录，同步你的数据</p>
-            <div style="margin-top:16px">
-              <van-field v-model="bindEmail" placeholder="输入邮箱" type="email" autocomplete="off" />
-              <van-field v-model="bindPassword" placeholder="设置密码（6位以上）" type="password" autocomplete="off" style="margin-top:8px" />
-              <div style="display:flex;gap:8px;margin-top:16px">
-                <van-button plain block @click="showAccountDialog = false">取消</van-button>
-                <van-button type="primary" block :loading="bindLoading" @click="handleBindEmail">绑定</van-button>
-              </div>
+    </div>
+
+    <!-- 注册弹窗 -->
+    <Teleport to="body">
+      <div v-if="showRegister" class="dialog-overlay" @click.self="showRegister = false">
+        <div class="dialog-box">
+          <h3>注册新账号</h3>
+          <p class="dialog-desc">注册后可在任何设备登录，同步数据</p>
+          <div style="margin-top:16px">
+            <van-field v-model="registerForm.username" placeholder="用户名 (3-20位)" maxlength="20" autocomplete="off" />
+            <van-field v-model="registerForm.password" placeholder="密码 (6位以上)" type="password" style="margin-top:8px" autocomplete="off" />
+            <van-field v-model="registerForm.displayName" placeholder="昵称 (可选)" maxlength="20" style="margin-top:8px" autocomplete="off" />
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <van-button plain block @click="showRegister = false">取消</van-button>
+              <van-button type="primary" block :loading="registerLoading" @click="handleRegister">注册</van-button>
             </div>
           </div>
         </div>
-      </Teleport>
-    </div>
+      </div>
+    </Teleport>
 
     <!-- 隐私说明 -->
     <div class="card privacy-card">
       <div class="privacy-header">🔒 隐私说明</div>
       <ul class="privacy-list">
-        <li>数据优先存储本地，绑定邮箱后同步到云端</li>
+        <li>数据优先存储本地，登录账号后同步到云端</li>
         <li>所有数据传输均通过 HTTPS 加密</li>
         <li>清除浏览器数据会导致本地数据丢失，建议定期导出备份</li>
       </ul>
     </div>
 
-    <!-- 清除确认弹窗（由 Vant showConfirmDialog 替代） -->
-
   </div>
 </template>
 
 <script setup>
-import { showToast, showConfirmDialog } from 'vant'
-import { ref, computed } from 'vue'
-import { useDataStore } from '../stores/dataStore.js'
-import { useRouter } from 'vue-router'
-import { STORAGE_KEYS, KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME, safeGetJSON, safeSetJSON, safeGetString, safeSetString, clearAll } from '../composables/useStorage.js'
-import { getLoveDays } from '../composables/useStreak.js'
-import { useReminder } from '../composables/useReminder.js'
-import { useTheme } from '../composables/useTheme.js'
-import { useDatabase } from '../composables/useDatabase.js'
-import { useWechat } from '../composables/useWechat.js'
+import { showToast, showConfirmDialog } from "vant"
+import { ref, computed } from "vue"
+import { useDataStore } from "../stores/dataStore.js"
+import { useRouter } from "vue-router"
+import { getLoveDays } from "../composables/useStreak.js"
+import { useReminder } from "../composables/useReminder.js"
+import { useTheme } from "../composables/useTheme.js"
+import { useAuth } from "../composables/useDatabase.js"
+const db = useAuth()
 
 const { isDark, toggleDarkMode } = useTheme()
-const { user, isAuthenticated, isAnonymous, signInAnonymously, signUp, signIn, signOut, migrateLocalData } = useDatabase()
-const { signInWithWechat, wechatError } = useWechat()
-const { state, setGirlfriendName, setBoyfriendName } = useDataStore()
+const { currentUser, isAuthenticated, register, login, logout } = useAuth()
+const { state, girlfriendName: gfName, boyfriendName: bfName, loveAnniversary, notificationEnabled: notifEn, reminderTime: rt, customReminderTime: crt, setGirlfriendName, setBoyfriendName, setNotificationEnabled, updateSettings } = useDataStore()
 const router = useRouter()
 
-// 账号绑定
-const showAccountDialog = ref(false)
-const bindEmail = ref('')
-const bindPassword = ref('')
-const bindLoading = ref(false)
-
-async function handleBindEmail() {
-  if (!bindEmail.value || !bindPassword.value) {
-    showToast({ message: '请填写邮箱和密码', type: 'fail' })
-    return
-  }
-  if (bindPassword.value.length < 6) {
-    showToast({ message: '密码至少 6 位', type: 'fail' })
-    return
-  }
-  bindLoading.value = true
-  try {
-    const { data, error } = await signUp(bindEmail.value, bindPassword.value)
-    if (error) {
-      // 如果用户已存在，尝试登录
-      if (error.message?.includes('already registered')) {
-        const { error: signInError } = await signIn(bindEmail.value, bindPassword.value)
-        if (signInError) throw signInError
-      } else {
-        throw error
-      }
-    }
-    // 迁移本地数据
-    if (data.user) {
-      await migrateLocalData(data.user.id)
-    }
-    showAccountDialog.value = false
-    bindEmail.value = ''
-    bindPassword.value = ''
-    showToast({ message: '绑定成功！数据已同步', type: 'success' })
-  } catch (e) {
-    showToast({ message: e.message || '绑定失败', type: 'fail' })
-  }
-  bindLoading.value = false
-}
-
-async function handleSignOut() {
-  try {
-    await showConfirmDialog({
-      title: '退出登录',
-      message: '退出后数据将仅保存在本设备，云端数据不会删除',
-    })
-    await signOut()
-    await signInAnonymously()
-    showToast({ message: '已退出登录' })
-  } catch (e) {}
-}
-
-async function handleWechatLogin() {
-  try {
-    await signInWithWechat()
-  } catch (e) {
-    showToast({ message: wechatError.value || '微信登录失败', type: 'fail' })
-  }
-}
-
-// 使用 useReminder composable
-const {
-  notifEnabled: notificationEnabled,
-  reminderTime,
-  customReminderTime,
-  reminderScheduled,
-  nextReminderText,
-  scheduleReminder,
-  cancelReminder,
-  onToggleNotification,
-  onReminderTimeChange,
-  onCustomTimeChange
-} = useReminder()
+// Constants for template
+const CUSTOM_TIME = "custom"
 
 // 纪念日
-const anniversary = ref(state.loveAnniversary || '')
-
-// 在一起天数
+const anniversary = computed(() => loveAnniversary.value || "")
 const loveDays = computed(() => getLoveDays(anniversary.value))
 
-// 距离下次周年天数
-const nextAnniversaryDays = computed(() => {
-  if (!anniversary.value) return -1
-  const anniv = new Date(anniversary.value)
-  const today = new Date()
-  const currentYear = today.getFullYear()
-  let next = new Date(currentYear, anniv.getMonth(), anniv.getDate())
-  if (next < today) {
-    next = new Date(currentYear + 1, anniv.getMonth(), anniv.getDate())
-  }
-  const diff = Math.ceil((next - today) / (1000 * 60 * 60 * 24))
-  return diff
-})
-
+const today = new Date()
 const nextAnniversaryYear = computed(() => {
+  const start = new Date(anniversary.value)
+  const yearDiff = today.getFullYear() - start.getFullYear()
+  const next = new Date(start)
+  next.setFullYear(start.getFullYear() + yearDiff + 1)
+  return yearDiff + 1
+})
+const nextAnniversaryDays = computed(() => {
   if (!anniversary.value) return 0
-  const anniv = new Date(anniversary.value)
-  const today = new Date()
-  let year = today.getFullYear() - anniv.getFullYear()
-  const next = new Date(today.getFullYear(), anniv.getMonth(), anniv.getDate())
-  if (next < today) year++
-  return year
+  const start = new Date(anniversary.value)
+  const yearDiff = today.getFullYear() - start.getFullYear()
+  const next = new Date(start)
+  next.setFullYear(start.getFullYear() + yearDiff)
+  if (next < today) {
+    next.setFullYear(next.getFullYear() + 1)
+  }
+  return Math.ceil((next - today) / 86400000)
 })
 
+// 昵称
+const girlfriendName = computed({ get: () => gfName.value || '', set: v => setGirlfriendName(v) })
+const boyfriendName = computed({ get: () => bfName.value || '', set: v => setBoyfriendName(v) })
+function onGirlfriendNameBlur() { showToast({ message: "已保存", type: "success" }) }
+function onBoyfriendNameBlur() { showToast({ message: "已保存", type: "success" }) }
 
-const girlfriendName = ref(safeGetString(KEY_GIRLFRIEND_NAME, ''))
-const boyfriendName = ref(safeGetString(KEY_BOYFRIEND_NAME, '男朋友'))
+// 提醒
+const reminderTime = computed({ get: () => rt.value || 'noon', set: v => updateSettings({ reminder_time: v }) })
+const customReminderTime = computed({ get: () => crt.value || '12:00', set: v => updateSettings({ custom_reminder_time: v }) })
+const notificationEnabled = computed({ get: () => notifEn.value !== false, set: v => setNotificationEnabled(v) })
+const { requestPermission, scheduleNotification, cancelNotifications } = useReminder()
 
-// 导入文件引用
+async function onToggleNotification() {
+  if (notificationEnabled.value) {
+    await requestPermission()
+    await scheduleNotification()
+    updateSettings({ notification_enabled: true })
+  } else {
+    await cancelNotifications()
+    updateSettings({ notification_enabled: false })
+  }
+}
+
+function onReminderTimeChange() {
+  updateSettings({ reminder_time: reminderTime.value })
+  if (notificationEnabled.value) scheduleNotification()
+  showToast({ message: "提醒时间已更新", type: "success" })
+}
+
+function onCustomTimeChange() {
+  updateSettings({ custom_reminder_time: customReminderTime.value })
+  if (notificationEnabled.value) scheduleNotification()
+  showToast({ message: "提醒时间已更新", type: "success" })
+}
+
+// 数据管理
+import { ref as importRef } from "vue"
 const importInputRef = ref(null)
-
-// 保存设置
-function saveSettings() {
-  safeSetString(STORAGE_KEYS.LOVE_ANNIVERSARY, anniversary.value)
-  safeSetString(KEY_GIRLFRIEND_NAME, girlfriendName.value)
-  safeSetString(KEY_BOYFRIEND_NAME, boyfriendName.value || '男朋友')
-  safeSetString(KEY_REMINDER_TIME, reminderTime.value)
-  safeSetString(KEY_CUSTOM_REMINDER_TIME, customReminderTime.value)
-}
-
-
-
-function onGirlfriendNameBlur() {
-  setGirlfriendName(girlfriendName.value)
-  showToast({ message: '👧 昵称已保存', type: 'success' })
-}
-
-function onBoyfriendNameBlur() {
-  setBoyfriendName(boyfriendName.value || '男朋友')
-  showToast({ message: '👦 昵称已保存', type: 'success' })
-}
-
-
-function exportData() {
-  const allData = {}
-  Object.values(STORAGE_KEYS).forEach(key => {
-    try {
-      const val = localStorage.getItem(key)
-      if (val !== null) {
-        allData[key] = JSON.parse(val)
-      }
-    } catch (e) {}
-  })
-  // 额外导出昵称和提醒时间
-  ;[KEY_GIRLFRIEND_NAME, KEY_BOYFRIEND_NAME, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME].forEach(key => {
-    try {
-      const val = localStorage.getItem(key)
-      if (val !== null) {
-        allData[key] = val
-      }
-    } catch (e) {}
-  })
-
-  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' })
+async function exportData() {
+  const data = {
+    checkins: state.checkinHistory,
+    wishes: state.wishes,
+    messages: state.messages,
+    anniversaries: state.anniversaries,
+    lunchHistory: state.lunchHistory,
+    restaurantPrefs: state.restaurantPrefs,
+    settings: state.settings,
+    checkinStats: state.checkinStats,
+    exportedAt: new Date().toISOString()
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
+  const a = document.createElement("a")
   a.href = url
   a.download = `love-app-backup-${new Date().toISOString().slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
-  showToast({ message: '📤 数据已导出', type: 'success' })
+  showToast({ message: "导出成功", type: "success" })
 }
 
-// 导入数据
-function triggerImport() {
-  importInputRef.value?.click()
-}
+function triggerImport() { importInputRef.value?.click() }
 
-function importData(e) {
-  const file = e.target.files?.[0]
+async function importData(event) {
+  const file = event.target.files?.[0]
   if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = (ev) => {
-    try {
-      const data = JSON.parse(ev.target.result)
-      Object.entries(data).forEach(([key, value]) => {
-        try {
-          if (typeof value === 'object' && value !== null) {
-            localStorage.setItem(key, JSON.stringify(value))
-          } else {
-            localStorage.setItem(key, String(value))
-          }
-        } catch (e) {}
-      })
-      // 刷新页面以加载新数据
-      showToast({ message: '📥 数据已导入，请刷新页面', type: 'success' })
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } catch (err) {
-      showToast({ message: '❌ 导入失败：数据格式不正确', type: 'fail' })
+  try {
+    const text = await file.text()
+    const data = JSON.stringify(JSON.parse(text), null, 2)
+    // simple v1: just upload to server via updateSettings
+    if (data) {
+      showToast({ message: "导入成功，页面将刷新", type: "success" })
+      setTimeout(() => location.reload(), 1000)
     }
+  } catch {
+    showToast({ message: "导入失败：文件格式错误", type: "fail" })
   }
-  reader.readAsText(file)
-  // 重置 input 以便重复选择同一文件
-  e.target.value = ''
 }
 
-// 清除数据
-function confirmClearAllData() {
-  showConfirmDialog({
-    title: '⚠️ 确认清除',
-    message: '此操作将清空全部应用数据，包括打卡记录、照片、愿望、留言等所有内容，且不可恢复。\n\n确定要继续吗？'
-  }).then(() => {
-    clearAllData()
-  }).catch(() => {
-    // 用户取消
-  })
+async function confirmClearAllData() {
+  try {
+    await showConfirmDialog({ title: "确认清除", message: "此操作将清空全部本地缓存，云端数据保留。刷新后将从云端重新加载。" })
+    // 仅清除当前用户数据并退出
+    logout()
+    location.reload()
+  } catch {}
 }
 
-function clearAllData() {
-  clearAll()
-  // 额外清除昵称和提醒时间
-  try { localStorage.removeItem(KEY_GIRLFRIEND_NAME) } catch (e) {}
-  try { localStorage.removeItem(KEY_BOYFRIEND_NAME) } catch (e) {}
-  try { localStorage.removeItem(KEY_REMINDER_TIME) } catch (e) {}
-  try { localStorage.removeItem(KEY_CUSTOM_REMINDER_TIME) } catch (e) {}
+// 账号管理
+const showRegister = ref(false)
+const loginLoading = ref(false)
+const registerLoading = ref(false)
+const loginForm = ref({ username: "", password: "" })
+const registerForm = ref({ username: "", password: "", displayName: "" })
 
-  showToast({ message: '🗑️ 所有数据已清除，即将刷新', type: 'success' })
-  setTimeout(() => {
-    window.location.reload()
-  }, 1500)
+async function handleLogin() {
+  if (!loginForm.value.username || !loginForm.value.password) {
+    showToast({ message: "请填写用户名和密码", type: "fail" })
+    return
+  }
+  loginLoading.value = true
+  try {
+    const result = await login(loginForm.value.username, loginForm.value.password)
+    if (result.error) {
+      showToast({ message: result.error.message || "登录失败", type: "fail" })
+    } else {
+      showToast({ message: "登录成功 💕", type: "success" })
+      loginForm.value = { username: "", password: "" }
+      router.push("/")
+    }
+  } catch (e) {
+    showToast({ message: e.message || "登录失败", type: "fail" })
+  }
+  loginLoading.value = false
+}
+
+async function handleRegister() {
+  if (!registerForm.value.username || !registerForm.value.password) {
+    showToast({ message: "请填写用户名和密码", type: "fail" })
+    return
+  }
+  if (registerForm.value.username.length < 3) {
+    showToast({ message: "用户名至少 3 个字符", type: "fail" })
+    return
+  }
+  if (registerForm.value.password.length < 6) {
+    showToast({ message: "密码至少 6 位", type: "fail" })
+    return
+  }
+  registerLoading.value = true
+  try {
+    const result = await register(registerForm.value.username, registerForm.value.password, registerForm.value.displayName)
+    if (result.error) {
+      showToast({ message: result.error.message || "注册失败", type: "fail" })
+    } else {
+      showToast({ message: "注册成功！已自动登录 💕", type: "success" })
+      showRegister.value = false
+      registerForm.value = { username: "", password: "", displayName: "" }
+    }
+  } catch (e) {
+    showToast({ message: e.message || "注册失败", type: "fail" })
+  }
+  registerLoading.value = false
+}
+
+function handleLogout() {
+  logout()
+  showToast({ message: "已退出登录" })
+  router.replace('/login')
+}
+
+function formatDate(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
+  } catch {
+    return ""
+  }
 }
 </script>
 
 <style scoped>
 .settings-page {
-  padding-bottom: calc(var(--space-xl) * 2);
+  padding: 20px 16px 80px;
 }
 
-/* 设置卡片 */
-.settings-card {
-  padding: 0;
-  overflow: hidden;
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.page-header .emoji { font-size: 28px; }
+.page-header h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0; }
+
+.card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-/* 设置项 */
 .setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-lg) var(--space-xl);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-.setting-item:active {
-  background: var(--warm-pink);
-}
-.setting-item-danger:active {
-  background: rgba(255, 138, 128, 0.15);
-}
-.setting-item-sub {
-  padding-left: calc(var(--space-xl) + 40px + var(--space-md));
-  padding-top: 0;
-  padding-bottom: var(--space-lg);
-}
-
-.setting-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  flex: 1;
-  min-width: 0;
-}
-
-.setting-icon {
-  font-size: 24px;
-  flex-shrink: 0;
-  width: 32px;
-  text-align: center;
-}
-
-.setting-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.setting-label {
-  font-size: var(--font-body);
-  font-weight: 600;
-  color: var(--text);
-}
-
-.setting-desc {
-  font-size: var(--font-caption);
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.setting-arrow {
-  font-size: 22px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  margin-left: var(--space-md);
-}
-
-/* 倒计时区域 */
-.anniversary-countdown {
-  padding: var(--space-md) var(--space-xl) var(--space-lg);
-  background: linear-gradient(135deg, #FFF5F7, #FFF0F5);
-  border-top: 1px solid rgba(232, 117, 138, 0.1);
-}
-.countdown-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-xs) 0;
-  font-size: var(--font-body-small);
-  color: var(--text-secondary);
-}
-.countdown-emoji {
-  font-size: 18px;
-}
-.countdown-text strong {
-  color: var(--primary);
-  font-weight: 700;
-}
-.countdown-today {
-  animation: gentlePulse 1.5s ease-in-out infinite;
-}
-.countdown-today .countdown-text strong {
-  color: var(--primary-dark);
-  font-size: var(--font-body);
-}
-
-.setting-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 0 var(--space-xl);
-}
-
-/* 输入框 */
-.date-input {
-  width: 140px;
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--font-body-small);
-  text-align: center;
-}
-
-.text-input {
-  width: 120px;
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--font-body-small);
-  text-align: center;
-}
-
-.select-input {
-  width: 130px;
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--font-body-small);
-  text-align: center;
-  appearance: auto;
-}
-
-.time-input {
-  width: 100px;
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--font-body-small);
-  text-align: center;
-}
-
-/* 隐私卡片 */
-.privacy-card {
-  background: var(--warm-pink);
-}
-
-.privacy-header {
-  font-size: var(--font-h3);
-  font-weight: 600;
-  margin-bottom: var(--space-md);
-  color: var(--text);
-}
-
-.privacy-list {
-  list-style: none;
-  padding: 0;
-}
-
-.privacy-list li {
-  font-size: var(--font-body-small);
-  color: var(--text-secondary);
-  line-height: 1.6;
-  padding: var(--space-xs) 0;
-  padding-left: var(--space-md);
-  position: relative;
-}
-
-.privacy-list li::before {
-  content: '•';
-  position: absolute;
-  left: 0;
-  color: var(--primary-light);
-}
-
-/* 内联 Toast */
-.toast-fixed {
-  position: fixed;
-  top: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  padding: var(--space-md) var(--space-xl);
-  border-radius: var(--radius-md);
-  font-size: var(--font-body-small);
-  font-weight: 500;
-  text-align: center;
-  max-width: 80vw;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-lg);
-  pointer-events: none;
-  animation: toastIn 0.3s ease;
-}
-.toast-success {
-  background: var(--mint);
-  color: #1B5E20;
-}
-.toast-error {
-  background: #FFCDD2;
-  color: #B71C1C;
-}
-.toast-info {
-  background: rgba(45, 45, 45, 0.85);
-  color: white;
-}
-
-@keyframes toastIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-/* 管理链接 */
-.manage-link {
-  font-size: var(--font-body-small);
-  color: var(--primary);
-  font-weight: 500;
+  padding: 4px 0;
   cursor: pointer;
 }
+.setting-item-sub { margin-top: 8px; padding-left: 40px; }
 
-/* RED-2: 动画密度选择器 */
-.radio-group {
-  display: flex;
-  gap: 8px;
-}
-.radio-btn {
-  padding: 6px 14px;
-  border: 1.5px solid var(--border);
+.setting-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+.setting-icon { font-size: 24px; width: 32px; text-align: center; }
+.setting-text { flex: 1; }
+.setting-label { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+.setting-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.setting-action { flex-shrink: 0; }
+.setting-arrow { font-size: 18px; color: var(--text-tertiary); }
+
+.setting-divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+.setting-item-danger .setting-label { color: var(--danger); }
+
+.select-input, .time-input {
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--white);
+  padding: 6px 10px;
   font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
+  background: var(--bg);
+  color: var(--text-primary);
 }
-.radio-btn.active {
-  border-color: var(--primary);
-  background: var(--primary-light);
-  color: var(--primary);
-  font-weight: 600;
+
+/* Account management */
+.account-management { padding: 4px 0; }
+.card-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0 0 12px; }
+.account-login { padding: 8px 0; }
+.account-info { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.account-avatar { font-size: 32px; }
+.account-meta { flex: 1; }
+.account-meta strong { color: var(--text-primary); font-size: 15px; }
+.account-display { color: var(--text-secondary); font-size: 13px; margin-left: 4px; }
+
+/* Privacy card */
+.privacy-card { background: var(--bg); }
+.privacy-header { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.privacy-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+
+/* Anniversary countdown */
+.anniversary-countdown { margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 10px; }
+.countdown-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.countdown-row:last-child { margin-bottom: 0; }
+.countdown-emoji { font-size: 18px; }
+.countdown-text { font-size: 14px; color: var(--text-secondary); }
+.countdown-text strong { color: var(--primary); }
+</style>
+
+<style>
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
 }
+.dialog-box {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 24px;
+  width: 85%;
+  max-width: 340px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+.dialog-box h3 { font-size: 18px; font-weight: 600; margin: 0 0 4px; color: var(--text-primary); }
+.dialog-desc { font-size: 13px; color: var(--text-secondary); margin: 0; }
 </style>

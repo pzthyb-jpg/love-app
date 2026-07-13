@@ -170,7 +170,7 @@ import { getTodayStr, getLoveDays } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
 
-const { state, addWish, updateWish, deleteWish } = useDataStore()
+const { state, addWish, updateWish, deleteWish, girlfriendName, boyfriendName, loveAnniversary } = useDataStore()
 
 const inputText = ref('')
 const activeFilter = ref('all')
@@ -202,7 +202,7 @@ const latestMessage = computed(() => {
   if (!state.messages || !state.messages.length) return null
   const today = getTodayStr()
   const hour = new Date().getHours()
-  const loveDays = getLoveDays(state.loveAnniversary)
+  const loveDays = getLoveDays(loveAnniversary.value)
   const result = getTodaysMessage(state.messages, today, hour)
   if (!result) return null
   return {
@@ -376,9 +376,9 @@ async function exportData() {
       wishes: state.wishes,
       messages: state.messages,
       settings: {
-        girlfriendName: state.girlfriendName,
-        boyfriendName: state.boyfriendName,
-        anniversary: state.anniversary
+        girlfriendName: girlfriendName.value || '',
+        boyfriendName: boyfriendName.value || '',
+        anniversary: loveAnniversary.value || ''
       }
     }
     zip.file('metadata.json', JSON.stringify(meta, null, 2))

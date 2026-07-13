@@ -130,9 +130,9 @@ import { getTodaysMessage, formatMessageText } from '../composables/useMessages.
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
 
 const router = useRouter()
-const { state, markMessageDisplayed, addQuickCheckin } = useDataStore()
+const { state, girlfriendName: gfName, loveAnniversary, markMessageDisplayed, addQuickCheckin } = useDataStore()
 
-const girlfriendName = computed(() => state.girlfriendName || '')
+const girlfriendName = computed(() => gfName.value)
 
 const daysRef = ref(null)
 
@@ -141,7 +141,7 @@ let titleClickTimer = null
 
 // 在一起天数
 const loveDays = computed(() => {
-  const anniversary = state.loveAnniversary || safeGetJSON('love_anniversary', '')
+  const anniversary = loveAnniversary.value || safeGetJSON('love_anniversary', '')
   return getLoveDays(anniversary)
 })
 
@@ -181,7 +181,7 @@ const streakDays = computed(() => {
 
 // 下一个里程碑
 const nextBadge = computed(() => {
-  return getNextMilestone(streakDays.value, state.checkinBadges)
+  return getNextMilestone(streakDays.value, state.checkinStats?.badges || [])
 })
 
 // 本周打卡
