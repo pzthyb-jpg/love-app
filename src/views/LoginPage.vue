@@ -80,31 +80,20 @@ async function handleLogin() {
   loginLoading.value = false
 }
 
+// 注册/登录网络异常时显示友好提示
 async function handleRegister() {
-  if (!registerForm.value.username || !registerForm.value.password) {
-    showToast({ message: "请填写用户名和密码", type: "fail" })
-    return
-  }
-  if (registerForm.value.username.length < 3) {
-    showToast({ message: "用户名至少 3 个字符", type: "fail" })
-    return
-  }
-  if (registerForm.value.password.length < 6) {
-    showToast({ message: "密码至少 6 位", type: "fail" })
-    return
-  }
   registerLoading.value = true
   try {
     const result = await register(registerForm.value.username, registerForm.value.password, registerForm.value.displayName)
     if (result.error) {
-      showToast({ message: result.error.message || "注册失败", type: "fail" })
+      showToast({ message: result.error.message || '注册失败，请稍后重试', type: 'fail' })
     } else {
-      showToast({ message: "注册成功！已自动登录 💕", type: "success" })
-      registerForm.value = { username: "", password: "", displayName: "" }
-      router.push("/")
+      showToast({ message: '注册成功！已自动登录 💕', type: 'success' })
+      registerForm.value = { username: '', password: '', displayName: '' }
+      router.push('/')
     }
   } catch (e) {
-    showToast({ message: e.message || "注册失败", type: "fail" })
+    showToast({ message: '网络异常，请检查网络后重试', type: 'fail' })
   }
   registerLoading.value = false
 }

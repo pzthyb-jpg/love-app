@@ -46,6 +46,9 @@ async function hashPassword(password, saltHex = null) {
 
 // ========== Supabase REST API 基础封装 ==========
 
+const FETCH_TIMEOUT = 15000 // 15s timeout
+const MAX_RETRIES = 2 // retry 2 times on failure
+
 async function supabaseFetch(path, options = {}) {
   const url = `${SUPABASE_URL}/rest/v1${path}`
   const headers = {
@@ -57,8 +60,24 @@ async function supabaseFetch(path, options = {}) {
   if (!options.headers?.Prefer) {
     headers.Prefer = 'return=minimal'
   }
-  const response = await fetch(url, { ...options, headers })
-  return response
+  
+  // Timeout + Retry wrapper
+  let lastErr = null
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+      const response = await fetch(url, { ...options, headers, signal: controller.signal })
+      clearTimeout(timer)
+      return response
+    } catch (e) {
+      lastErr = e
+      // Only retry on network errors, not on user cancellation or 4xx
+      if (e.name === 'AbortError' || !e.message?.includes('fetch')) break
+      if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)))
+    }
+  }
+  throw lastErr
 }
 
 // ========== Auth (注册/登录) ==========
