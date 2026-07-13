@@ -84,8 +84,16 @@ async function register(username, password, displayName = '') {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      if (errorData.code === '23505') return { error: { message: '用户名已存在' } }
-      return { error: { message: errorData.message || '注册失败' } }
+      if (errorData.code === '23505') return { error: { message: '用户名已被使用，请换一个吧' } }
+      // 友好错误映射
+      const msg = errorData.message || ''
+      if (msg.includes('duplicate') || msg.includes('already exists')) {
+        return { error: { message: '用户名已被使用，请换一个吧' } }
+      }
+      if (msg.includes('network') || msg.includes('fetch')) {
+        return { error: { message: '网络异常，请检查网络后重试' } }
+      }
+      return { error: { message: '注册失败，请稍后重试' } }
     }
 
     const users = await response.json()
@@ -103,7 +111,7 @@ async function register(username, password, displayName = '') {
 
     return { data: newUser }
   } catch (e) {
-    return { error: { message: e.message || '注册失败' } }
+    return { error: { message: '网络异常，请检查网络后重试' } }
   }
 }
 
@@ -115,7 +123,14 @@ async function login(username, password) {
       `/app_users?username=eq.${encodeURIComponent(username)}&select=id,username,password_hash,salt,display_name,created_at`
     )
 
-    if (!response.ok) return { error: { message: '登录失败，请检查网络' } }
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}))
+      const msg = errData.message || ''
+      if (msg.includes('network') || msg.includes('fetch') || msg.includes('Failed')) {
+        return { error: { message: '网络异常，请检查网络后重试' } }
+      }
+      return { error: { message: '登录失败，请稍后重试' } }
+    }
 
     const users = await response.json()
     const user = users?.[0]
@@ -130,7 +145,7 @@ async function login(username, password) {
 
     return { data: user }
   } catch (e) {
-    return { error: { message: e.message || '登录失败' } }
+    return { error: { message: '网络异常，请检查网络后重试' } }
   }
 }
 
