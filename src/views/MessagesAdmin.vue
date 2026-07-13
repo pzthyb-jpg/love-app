@@ -27,40 +27,11 @@
 
     <!-- 管理界面 -->
     <template v-else>
-      <!-- 新建留言 -->
+      <!-- 新建留言（跳转新页面） -->
       <div class="card">
-        <h3 class="card-title">📝 新建留言</h3>
-        <div class="form-group">
-          <label class="form-label">内容</label>
-          <van-field
-            v-model="newMessageText"
-            type="textarea"
-            placeholder="输入留言内容，支持 {{days}} 模板变量"
-            maxlength="500"
-            rows="3"
-            :autosize="{ maxHeight: 150 }"
-          />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">类型</label>
-            <select v-model="newMessageType" class="input">
-              <option value="morning">🌅 早安</option>
-              <option value="evening">🌙 晚安</option>
-              <option value="random">🎲 随机</option>
-              <option value="special">🎉 特殊日</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">条件</label>
-            <select v-model="newMessageCondition" class="input">
-              <option value="null">无</option>
-              <option value="anniversary">🎂 纪念日</option>
-              <option value="festival">🎊 节日</option>
-            </select>
-          </div>
-        </div>
-        <van-button type="primary" block @click="handleAddMessage">
+        <h3 class="card-title">📝 添加留言</h3>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">点击按钮跳转到新页面添加留言</p>
+        <van-button type="primary" block round @click="router.push('/messages-admin/new')">
           ✨ 添加留言
         </van-button>
       </div>
@@ -112,7 +83,7 @@
                   {{ msg.specialCondition && msg.specialCondition !== 'null' ? '🎯 ' + msg.specialCondition : '—' }}
                 </span>
                 <div class="msg-actions">
-                  <button class="msg-btn" @click="startEdit(msg)" aria-label="编辑">✏️</button>
+                  <button class="msg-btn" @click="router.push(`/messages-admin/${msg.id}`)" aria-label="编辑">✏️</button>
                   <button class="msg-btn msg-btn-danger" @click="confirmDeleteMessage(msg)" aria-label="删除">🗑️</button>
                 </div>
               </div>
@@ -164,10 +135,7 @@ const pwdError = ref(false)
 const pwdErrorMessage = ref('')
 const currentPassword = ref('')
 
-// 新建留言
-const newMessageText = ref('')
-const newMessageType = ref('random')
-const newMessageCondition = ref('null')
+// 新留言/编辑留言已迁移到 MessageForm.vue
 
 // 登录验证
 async function verifyPassword() {
@@ -195,38 +163,17 @@ async function verifyPassword() {
 }
 
 function handleAddMessage() {
-  const text = newMessageText.value.trim()
-  if (!text) {
-    showToast({ message: '请输入留言内容', type: 'fail' })
-    return
-  }
-  const msg = {
-    id: Date.now(),
-    text,
-    type: newMessageType.value,
-    author: '男朋友',
-    createdAt: new Date().toISOString().slice(0, 10),
-    displayedDates: [],
-    specialCondition: newMessageCondition.value === 'null' ? null : newMessageCondition.value
-  }
-  addMessage(msg)
-  newMessageText.value = ''
-  newMessageType.value = 'random'
-  newMessageCondition.value = 'null'
-  showToast({ message: '✅ 留言已添加', type: 'success' })
+  // deprecated - moved to MessageForm.vue
 }
 
-// 编辑
+// 编辑已迁移到 MessageForm.vue，列表不再内嵌编辑
 const editingId = ref(null)
 const editText = ref('')
 const editType = ref('random')
 const editCondition = ref('null')
 
 function startEdit(msg) {
-  editingId.value = msg.id
-  editText.value = msg.text
-  editType.value = msg.type
-  editCondition.value = msg.specialCondition || 'null'
+  // deprecated - 编辑已迁移到 MessageForm.vue
 }
 
 function saveEdit(msg) {

@@ -23,7 +23,7 @@
 - **前端**: Vue 3 + Vite + Vue Router
 - **存储**: localStorage（safeGetJSON/safeSetJSON 模式）
 - **PWA**: vite-plugin-pwa
-- **样式**: 纯手写 CSS（无 UI 组件库）
+- **样式**: Vant 4 组件库 + CSS 变量体系
 
 ## 📁 项目结构
 

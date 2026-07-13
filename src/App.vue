@@ -19,7 +19,7 @@
           <component :is="Component" />
         </transition>
       </router-view>
-      <van-tabbar route>
+      <van-tabbar route v-if="showTabbar">
         <van-tabbar-item to="/" icon="home-o">首页</van-tabbar-item>
         <van-tabbar-item to="/photo" icon="photograph">拍照</van-tabbar-item>
         <van-tabbar-item to="/lunch" icon="bag-o">午餐</van-tabbar-item>
@@ -42,10 +42,34 @@
 </template>
 
 <script setup>
-import { ref, onErrorCaptured, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onErrorCaptured, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useDataStore } from './stores/dataStore.js'
+import { useAuth } from './composables/useDatabase.js'
 
 const router = useRouter()
+const route = useRoute()
+const { isAuthenticated } = useAuth()
+const dataStore = useDataStore()
+
+// 只在已登录且非登录页时显示 tabbar
+const showTabbar = computed(() => {
+  return isAuthenticated.value && route.path !== '/login'
+})
+
+// 登录后自动加载数据
+watch(isAuthenticated, (val) => {
+  if (val) {
+    dataStore.loadAllData()
+  }
+})
+
+// 首次启动若已登录也加载
+onMounted(() => {
+  if (isAuthenticated.value) {
+    dataStore.loadAllData()
+  }
+})
 const hasError = ref(false)
 const errorInfo = ref(null)
 const routeLoading = ref(false)
