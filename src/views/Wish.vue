@@ -18,27 +18,12 @@
       </div>
     </div>
 
-    <!-- 输入区域 -->
+    <!-- 新增入口 -->
     <div class="card input-card">
-      <van-field
-        v-model="inputText"
-        type="textarea"
-        placeholder="写下你的愿望或吐槽吧..."
-        maxlength="200"
-        rows="3"
-        :autosize="{ maxHeight: 120 }"
-        show-word-limit
-      />
-      <div class="input-footer">
-        <div class="input-buttons">
-          <van-button type="default" size="small" @click="submitWish" :disabled="!inputText.trim()">
-            ✨ 许愿
-          </van-button>
-          <van-button type="default" size="small" class="vent-btn" @click="submitVent" :disabled="!inputText.trim()">
-            😤 吐槽
-          </van-button>
-        </div>
-      </div>
+      <van-button type="primary" round block @click="goToNewWishForm">
+        ✨ 许愿/吐槽
+      </van-button>
+      <p class="input-hint">点击按钮跳转新页面，写下你的愿望或吐槽吧</p>
     </div>
 
     <!-- 筛选栏 -->
@@ -162,17 +147,18 @@
 </template>
 
 <script setup>
-import { showToast, showConfirmDialog, showDialog } from 'vant'
+import { showToast, showConfirmDialog } from 'vant'
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDataStore } from '../stores/dataStore.js'
 import { getTodaysMessage, formatMessageText } from '../composables/useMessages.js'
 import { getTodayStr, getLoveDays } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
 
+const router = useRouter()
 const { state, addWish, updateWish, deleteWish, girlfriendName, boyfriendName, loveAnniversary } = useDataStore()
 
-const inputText = ref('')
 const activeFilter = ref('all')
 const showAllMessages = ref(false)
 const showActionMenu = ref(false)
@@ -256,56 +242,11 @@ function typeLabel(type) {
   return labels[type] || type
 }
 
-function submitWish() {
-  submitEntry('wish')
+// 跳转新增许愿/吐槽表单
+function goToNewWishForm() {
+  router.push('/wishlist/new')
 }
 
-function submitVent() {
-  submitEntry('vent')
-}
-
-function submitEntry(type) {
-  const text = inputText.value.trim()
-  if (!text) return
-
-  const now = new Date()
-  const wish = {
-    id: Date.now() + Math.random(),
-    text,
-    type,
-    time: now.toISOString(),
-    timeStr: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-    dateStr: getTodayStr(),
-    fulfilled: false,
-    fulfilledBy: null
-  }
-
-  addWish(wish)
-  inputText.value = ''
-  hapticFeedback(null, HAPTIC_PATTERNS.SUBMIT)
-  showToast({ message: type === 'wish' ? '✨ 愿望已许下！' : '😤 吐槽已记录！', type: 'success' })
-}
-
-// 长按检测（带进度环）
-function onBubbleTouchStart(event, wish) {
-  isLongPress = false
-  longPressProgress.value = 0
-  let elapsed = 0
-  const startTime = Date.now()
-  
-  longPressTimer = setInterval(() => {
-    elapsed = Date.now() - startTime
-    longPressProgress.value = Math.min(elapsed / 500, 1)
-    if (elapsed >= 500) {
-      clearInterval(longPressTimer)
-      isLongPress = true
-      selectedWish.value = wish
-      showActionMenu.value = true
-      longPressProgress.value = 0
-      hapticFeedback(null, HAPTIC_PATTERNS.LIGHT)
-    }
-  }, 16)
-}
 
 function onBubbleTouchEnd(event, wish) {
   if (longPressTimer) {

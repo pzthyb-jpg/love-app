@@ -10,7 +10,7 @@
     <div v-if="!state.anniversaries.length" class="empty-state">
       <span class="icon">🎂</span>
       <p>还没有纪念日<br/>点击下方按钮添加第一个吧</p>
-      <van-button type="primary" round @click="showAddDialog">+ 添加纪念日</van-button>
+      <van-button type="primary" round @click="router.push('/anniversary/new')">+ 添加纪念日</van-button>
     </div>
 
     <!-- 纪念日列表 -->
@@ -53,7 +53,7 @@
             <span>{{ formatDate(item.createdAt) }}</span>
           </div>
           <div class="card-actions">
-            <van-button size="small" class="btn-edit" @click.stop="showEditDialog(item)">编辑</van-button>
+            <van-button size="small" class="btn-edit" @click.stop="router.push(`/anniversary/${item.id}`)">编辑</van-button>
             <van-button size="small" class="btn-delete" @click.stop="confirmDelete(item)">删除</van-button>
           </div>
         </div>
@@ -61,97 +61,9 @@
     </div>
 
     <!-- FAB 添加按钮 -->
-    <van-button class="fab-add" type="primary" round icon="plus" @click="showAddDialog" />
+    <van-button class="fab-add" type="primary" round icon="plus" @click="router.push('/anniversary/new')" />
 
-    <!-- 添加/编辑弹窗 -->
-    <van-dialog
-      v-model:show="dialogVisible"
-      :title="isEdit ? '✏️ 编辑纪念日' : '💕 添加纪念日'"
-      show-cancel-button
-      confirm-button-text="保存"
-      cancel-button-text="取消"
-      @confirm="onSave"
-      @cancel="dialogVisible = false"
-    >
-      <div class="form-content">
-        <!-- 名称 -->
-        <div class="form-group">
-          <label>名称 <span class="required">*</span></label>
-          <van-field
-            v-model="form.name"
-            placeholder="如：恋爱纪念日"
-            maxlength="20"
-            :error="formError"
-            :error-message="formError"
-            @input="formError = ''"
-          />
-        </div>
-
-        <!-- 类型 -->
-        <div class="form-group">
-          <label>类型 <span class="required">*</span></label>
-          <div class="type-options">
-            <button
-              v-for="(config, key) in TYPES_CONFIG"
-              :key="key"
-              :class="['type-btn', { active: form.type === key }]"
-              @click="form.type = key; form.emoji = config.emoji"
-            >
-              {{ config.emoji }} {{ config.label }}
-            </button>
-          </div>
-        </div>
-
-        <!-- 日期 -->
-        <div class="form-group">
-          <label>日期 <span class="required">*</span></label>
-          <van-field
-            :model-value="form.date"
-            readonly
-            placeholder="选择日期"
-            right-icon="arrow"
-            @click="showDatePicker = true"
-          />
-        </div>
-
-        <!-- 备注 -->
-        <div class="form-group">
-          <label>备注</label>
-          <van-field
-            v-model="form.remark"
-            type="textarea"
-            placeholder="optional — 备注信息"
-            rows="2"
-            maxlength="100"
-          />
-        </div>
-
-        <!-- 提前提醒 -->
-        <div class="form-group">
-          <label>提前提醒</label>
-          <div class="remind-checks">
-            <label v-for="d in [1, 3, 7, 30]" :key="d" class="check-item">
-              <van-checkbox :model-value="form.remindDays.includes(d)" @update:model-value="toggleRemind(d)">
-                {{ d }} 天前
-              </van-checkbox>
-            </label>
-          </div>
-        </div>
-      </div>
-    </van-dialog>
-    <!-- 日期选择器 -->
-    <van-popup v-model:show="showDatePicker" position="bottom" round>
-      <van-date-picker
-        :model-value="selectedDate"
-        title="选择日期"
-        :min-date="minDate"
-        :max-date="maxDate"
-        @confirm="onDateConfirm"
-        @cancel="showDatePicker = false"
-      />
-    </van-popup>
-
-    <!-- 删除确认 -->
+    <!-- 删除确认弹窗（轻交互保留弹窗） -->
     <van-dialog
       v-model:show="deleteDialogVisible"
       title="⚠️"
@@ -170,16 +82,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { useDataStore } from '../stores/dataStore.js'
 import { useAnniversary } from '../composables/useAnniversary.js'
 
+const router = useRouter()
 const store = useDataStore()
 const {
   sortedList,
-  addAnniversary,
-  updateAnniversary,
   deleteAnniversary,
   formatReminder,
   getTypeConfig,
@@ -187,22 +99,9 @@ const {
   getDaysSinceText,
   isToday,
   checkAnniversaryNotifications,
-  TYPES_CONFIG
 } = useAnniversary()
 
 const state = store.state
-
-// 弹窗状态
-const dialogVisible = ref(false)
-const isEdit = ref(false)
-const editingId = ref(null)
-const formError = ref('')
-
-// 日期选择器
-const showDatePicker = ref(false)
-const minDate = new Date(1990, 0, 1)
-const maxDate = new Date(2050, 11, 31)
-const selectedDate = ref([])
 
 // 删除确认
 const deleteDialogVisible = ref(false)
@@ -210,84 +109,6 @@ const deleteTarget = ref(null)
 
 // 展开状态
 const expandedId = ref(null)
-
-// 表单数据
-const form = reactive({
-  name: '',
-  date: '',
-  type: 'anniversary',
-  emoji: '💕',
-  remark: '',
-  remindDays: [1, 3, 7]
-})
-
-// 初始化表单
-function resetForm() {
-  form.name = ''
-  form.date = ''
-  form.type = 'anniversary'
-  form.emoji = '💕'
-  form.remark = ''
-  form.remindDays = [1, 3, 7]
-  formError.value = ''
-}
-
-// 显示添加弹窗
-function showAddDialog() {
-  resetForm()
-  isEdit.value = false
-  editingId.value = null
-  dialogVisible.value = true
-}
-
-// 显示编辑弹窗
-function showEditDialog(item) {
-  resetForm()
-  isEdit.value = true
-  editingId.value = item.id
-  form.name = item.name
-  form.date = item.date
-  form.type = item.type
-  form.emoji = item.emoji
-  form.remark = item.remark || ''
-  form.remindDays = [...(item.remindDays || [3])]
-  dialogVisible.value = true
-}
-
-// 保存
-function onSave() {
-  if (!form.name.trim()) {
-    formError.value = '请输入名称'
-    return
-  }
-  if (!form.date) {
-    showToast({ message: '请选择日期', type: 'fail' })
-    return
-  }
-
-  if (isEdit.value) {
-    updateAnniversary(editingId.value, {
-      name: form.name.trim(),
-      date: form.date,
-      type: form.type,
-      emoji: form.emoji,
-      remark: form.remark.trim(),
-      remindDays: form.remindDays
-    })
-    showToast({ message: '已更新', type: 'success' })
-  } else {
-    addAnniversary({
-      name: form.name.trim(),
-      date: form.date,
-      type: form.type,
-      emoji: form.emoji,
-      remark: form.remark.trim(),
-      remindDays: form.remindDays
-    })
-    showToast({ message: `已添加 ${form.emoji}`, type: 'success' })
-  }
-  dialogVisible.value = false
-}
 
 // 删除确认
 function confirmDelete(item) {
@@ -297,13 +118,8 @@ function confirmDelete(item) {
 
 // 执行删除
 function doDelete() {
-  if (deleteTarget.value) {
-    deleteAnniversary(deleteTarget.value.id)
-    showToast({ message: '已删除', type: 'success' })
-    if (expandedId.value === deleteTarget.value.id) {
-      expandedId.value = null
-    }
-  }
+  deleteAnniversary(deleteTarget.value.id)
+  showToast({ message: '已删除', type: 'success' })
   deleteDialogVisible.value = false
   deleteTarget.value = null
 }
@@ -313,51 +129,14 @@ function toggleExpand(id) {
   expandedId.value = expandedId.value === id ? null : id
 }
 
-// 日期确认
-function onDateConfirm({ selectedValues }) {
-  const [year, month, day] = selectedValues
-  const y = typeof year === 'number' ? year : parseInt(year)
-  const m = typeof month === 'number' ? month : parseInt(month)
-  const d = typeof day === 'number' ? day : parseInt(day)
-  form.date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-  showDatePicker.value = false
-}
-
-// 切换提醒天数
-function toggleRemind(day) {
-  const idx = form.remindDays.indexOf(day)
-  if (idx >= 0) {
-    form.remindDays.splice(idx, 1)
-  } else {
-    form.remindDays.push(day)
-    form.remindDays.sort((a, b) => a - b)
+function formatDate(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  } catch {
+    return ''
   }
 }
 
-// 格式化日期显示
-function formatDate(isoStr) {
-  if (!isoStr) return ''
-  const d = new Date(isoStr)
-  if (isNaN(d.getTime())) return isoStr
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-// 类型配置（模板中使用）
-
-// 监听类型变化，自动更新 emoji
-watch(() => form.type, (newType) => {
-  const config = TYPES_CONFIG[newType]
-  if (config) {
-    form.emoji = config.emoji
-    // 更新默认提醒天数
-    form.remindDays = [...config.defaults]
-  }
-})
-
-// 初始化检查推送
 onMounted(() => {
   checkAnniversaryNotifications()
 })
