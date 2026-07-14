@@ -6,6 +6,22 @@
     </div>
 
     <div class="card settings-card">
+      <div class="setting-item" @click="router.push('/location-manage')">
+        <div class="setting-info">
+          <div class="setting-icon">📍</div>
+          <div class="setting-text">
+            <div class="setting-label">共享位置管理</div>
+            <div class="setting-desc">小皮 · 共享中</div>
+          </div>
+        </div>
+        <div class="setting-action">
+          <span class="manage-link">›</span>
+        </div>
+      </div>
+      <div class="setting-divider"></div>
+    </div>
+
+    <div class="card settings-card">
       <div class="setting-item">
         <div class="setting-info">
           <div class="setting-icon">{{ isDark ? "🌙" : "☀️" }}</div>

@@ -23,6 +23,18 @@ const routes = [
     meta: { title: '午餐', icon: '🍽️', tab: 2 }
   },
   {
+    path: '/location',
+    name: 'Location',
+    component: () => import('../views/LocationShare.vue'),
+    meta: { title: '位置', icon: '📍', tab: 2.5 }
+  },
+  {
+    path: '/location-manage',
+    name: 'LocationManage',
+    component: () => import('../views/LocationManage.vue'),
+    meta: { title: '共享位置管理', hidden: true }
+  },
+  {
     path: '/wish',
     name: 'Wish',
     component: () => import('../views/Wish.vue'),
