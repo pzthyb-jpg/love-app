@@ -16,14 +16,17 @@
       <!-- 名称 -->
       <div class="form-group">
         <label>名称 <span class="required">*</span></label>
-        <input
-          v-model="form.name"
-          class="form-input"
-          :class="{ error: formError }"
-          placeholder="如：恋爱纪念日"
-          maxlength="20"
-          @input="formError = ''"
-        />
+        <div class="input-wrap">
+          <input
+            v-model="form.name"
+            class="form-input"
+            :class="{ error: formError, filled: form.name }"
+            placeholder="给这个特殊的日子起个名字..."
+            maxlength="20"
+            @input="formError = ''"
+          />
+          <span class="input-watermark" v-if="!form.name">♡</span>
+        </div>
         <div v-if="formError" class="error-text">{{ formError }}</div>
       </div>
 
@@ -45,9 +48,9 @@
       <!-- 日期 -->
       <div class="form-group">
         <label>日期 <span class="required">*</span></label>
-        <div class="form-input date-input" @click="showDatePicker = true">
-          <span v-if="form.date">{{ form.date }}</span>
-          <span v-else class="placeholder">选择日期</span>
+        <div class="date-field" :class="{ filled: form.date }" @click="showDatePicker = true">
+          <span v-if="form.date" class="date-value">{{ form.date }}</span>
+          <span v-else class="date-watermark">点击选择日期 📅</span>
           <svg class="date-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 18l6-6-6-6"/>
           </svg>
@@ -57,13 +60,18 @@
       <!-- 备注 -->
       <div class="form-group">
         <label>备注</label>
-        <textarea
-          v-model="form.remark"
-          class="form-textarea"
-          placeholder="optional — 备注信息"
-          rows="3"
-          maxlength="100"
-        ></textarea>
+        <div class="input-wrap">
+          <textarea
+            v-model="form.remark"
+            class="form-textarea"
+            :class="{ filled: form.remark }"
+            placeholder="记录一下这天的美好记忆吧 💭"
+            rows="3"
+            maxlength="100"
+          ></textarea>
+          <span class="input-watermark textarea-wmark" v-if="!form.remark">💬</span>
+        </div>
+        <div class="char-count">{{ form.remark.length }}/100</div>
       </div>
 
       <!-- 提前提醒 -->
@@ -80,12 +88,15 @@
             <span class="check-label">{{ d }} 天前</span>
           </label>
         </div>
+        <p class="form-hint">纪念日当天与所选天数前将收到提醒 🔔</p>
       </div>
     </div>
 
     <!-- 底部固定保存按钮 -->
     <div class="form-footer">
-      <van-button type="primary" round block @click="onSave">保存</van-button>
+      <van-button type="primary" round block @click="onSave" :loading="isSaving">
+        {{ isSaving ? '保存中...' : '保存' }}
+      </van-button>
     </div>
 
     <!-- 日期选择器弹窗 -->
@@ -124,12 +135,14 @@ const isEdit = !!annId
 
 // 日期选择器
 const showDatePicker = ref(false)
+const today = new Date()
 const minDate = new Date(1990, 0, 1)
 const maxDate = new Date(2050, 11, 31)
-const selectedDate = ref([])
+const selectedDate = ref([today.getFullYear(), today.getMonth() + 1, today.getDate()])
 
 // 表单状态
 const formError = ref('')
+const isSaving = ref(false)
 const form = reactive({
   name: '',
   date: '',
@@ -168,6 +181,7 @@ async function onSave() {
     return
   }
 
+  isSaving.value = true
   const payload = {
     name: form.name.trim(),
     date: form.date,
@@ -194,6 +208,7 @@ async function onSave() {
       showToast({ message: result.error?.message || '保存失败', type: 'fail' })
     }
   }
+  isSaving.value = false
 }
 
 // 日期确认
@@ -261,10 +276,6 @@ function toggleRemind(day) {
   background: rgba(232, 117, 138, 0.08);
 }
 
-.back-btn:active {
-  background: rgba(232, 117, 138, 0.15);
-}
-
 .form-title {
   font-size: 17px;
   font-weight: 600;
@@ -272,18 +283,15 @@ function toggleRemind(day) {
   margin: 0;
 }
 
-.header-spacer {
-  width: 36px;
-}
+.header-spacer { width: 36px; }
 
-/* === Body (scrollable form) === */
+/* === Body === */
 .form-body {
   flex: 1;
   padding: var(--space-lg);
   overflow-y: auto;
 }
 
-/* === Form groups === */
 .form-group {
   margin-bottom: var(--space-xl);
 }
@@ -299,7 +307,11 @@ function toggleRemind(day) {
   color: var(--primary);
 }
 
-/* Input */
+/* === Input with watermark === */
+.input-wrap {
+  position: relative;
+}
+
 .form-input {
   width: 100%;
   padding: 12px 14px;
@@ -316,6 +328,7 @@ function toggleRemind(day) {
 
 .form-input:focus {
   border-color: var(--primary);
+  background: var(--bg-card);
 }
 
 .form-input.error {
@@ -324,17 +337,63 @@ function toggleRemind(day) {
 
 .form-input::placeholder {
   color: var(--text-hint);
+  font-size: 14px;
 }
 
-.date-input {
+/* Watermark icon in right side */
+.input-watermark {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: var(--text-hint);
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.input-wrap:focus-within .input-watermark,
+.form-input.filled ~ .input-watermark {
+  opacity: 0;
+}
+
+.textarea-wmark {
+  top: 16px;
+  transform: none;
+}
+
+/* === Date field === */
+.date-field {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
   cursor: pointer;
+  transition: border-color 0.2s ease;
 }
 
-.placeholder {
+.date-field:active {
+  border-color: var(--primary);
+}
+
+.date-field.filled {
+  background: var(--bg-card);
+  border-color: var(--primary-light);
+}
+
+.date-watermark {
   color: var(--text-hint);
+  font-size: 14px;
+}
+
+.date-value {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .date-arrow {
@@ -342,7 +401,7 @@ function toggleRemind(day) {
   flex-shrink: 0;
 }
 
-/* Textarea */
+/* === Textarea === */
 .form-textarea {
   width: 100%;
   padding: 12px 14px;
@@ -360,17 +419,33 @@ function toggleRemind(day) {
 
 .form-textarea:focus {
   border-color: var(--primary);
+  background: var(--bg-card);
 }
 
 .form-textarea::placeholder {
   color: var(--text-hint);
+  font-size: 14px;
 }
 
-/* Error text */
+.char-count {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-hint);
+  margin-top: 4px;
+}
+
+/* === Error text === */
 .error-text {
   margin-top: 6px;
   font-size: 13px;
   color: #E8758A;
+}
+
+/* === Form hint === */
+.form-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-hint);
 }
 
 /* === Type options === */
@@ -403,7 +478,7 @@ function toggleRemind(day) {
 /* === Remind checks === */
 .remind-checks {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -451,7 +526,7 @@ function toggleRemind(day) {
   user-select: none;
 }
 
-/* === Footer (fixed bottom save) === */
+/* === Footer === */
 .form-footer {
   position: fixed;
   bottom: 0;
