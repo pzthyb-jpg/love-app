@@ -23,12 +23,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // 跳过等待，立即激活新版本
         skipWaiting: true,
         clientsClaim: true,
-        // 重要：更新 SW 时强制刷新所有客户端
         cleanupOutdatedCaches: true,
-        // 网络优先，减少缓存失效问题
         navigateFallback: 'index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
       },
