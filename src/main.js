@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import Vvant from 'vant'
 import App from './App.vue'
 import router from './router/index.js'
 import './assets/styles/main.css'
@@ -11,4 +12,5 @@ useTheme()
 
 const app = createApp(App)
 app.use(router)
+app.use(Vvant)
 app.mount('#app')
