@@ -39,7 +39,7 @@ export async function getLocation() {
 
 async function getLocationByIpApi() {
   try {
-    const res = await fetch('http://ip-api.com/json/?lang=zh-CN')
+    const res = await fetch('https://ip-api.com/json/?lang=zh-CN')
     const data = await res.json()
     if (data.status !== 'success') return null
     let city = data.city || data.regionName || ''

@@ -369,7 +369,7 @@ async function addMessage(msg) {
     headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify({
       user_id: uid,
-      content: msg.content,
+      content: msg.content || msg.text || '',
       author_name: msg.author_name || '',
       icon: msg.icon || '💕',
       is_template: msg.is_template || false,
