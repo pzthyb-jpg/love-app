@@ -311,7 +311,7 @@ function toggleRemind(day) {
 .input-wrap {
   position: relative;
 }
-
+/* Input */
 .form-input {
   width: 100%;
   padding: 12px 14px;
@@ -319,16 +319,18 @@ function toggleRemind(day) {
   border-radius: var(--radius-md);
   font-size: 15px;
   font-family: inherit;
-  background: var(--bg);
+  background: rgba(255, 255, 255, 0.5);
   color: var(--text);
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
   outline: none;
   box-sizing: border-box;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .form-input:focus {
   border-color: var(--primary);
-  background: var(--bg-card);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .form-input.error {
@@ -338,6 +340,7 @@ function toggleRemind(day) {
 .form-input::placeholder {
   color: var(--text-hint);
   font-size: 14px;
+  opacity: 0.6;
 }
 
 /* Watermark icon in right side */
@@ -425,6 +428,7 @@ function toggleRemind(day) {
 .form-textarea::placeholder {
   color: var(--text-hint);
   font-size: 14px;
+  opacity: 0.6;
 }
 
 .char-count {

@@ -369,7 +369,12 @@ async function addAnniversary(data) {
 }
 
 async function updateAnniversary(id, updates) {
-  const result = await db.updateAnniversary(id, updates)
+  const dbUpdates = { ...updates }
+  if (dbUpdates.remindDays !== undefined) {
+    dbUpdates.remind_days = dbUpdates.remindDays
+    delete dbUpdates.remindDays
+  }
+  const result = await db.updateAnniversary(id, dbUpdates)
   if (result.data) {
     const idx = state.anniversaries.findIndex(a => a.id === id)
     if (idx !== -1) state.anniversaries[idx] = result.data
