@@ -419,7 +419,12 @@ async function getAnniversaries() {
   const uid = currentUser.value.id
   const response = await supabaseFetch(`/anniversaries?user_id=eq.${uid}&select=*&order=date.asc`)
   if (!response.ok) return []
-  return await response.json()
+  const data = await response.json()
+  return data.map(item => ({
+    ...item,
+    remindDays: item.remind_days,
+    createdAt: item.created_at,
+  }))
 }
 
 async function addAnniversary(data) {
@@ -435,7 +440,7 @@ async function addAnniversary(data) {
       type: data.type || 'anniversary',
       emoji: data.emoji || '💕',
       remark: data.remark || '',
-      remind_days: data.remind_days || [3],
+      remind_days: data.remindDays || data.remind_days || [3],
     }),
   })
   if (!response.ok) {
@@ -443,7 +448,11 @@ async function addAnniversary(data) {
     return { error: { message: err.message || '添加纪念日失败' } }
   }
   const list = await response.json()
-  return { data: list?.[0] }
+  const item = list?.[0]
+  if (item) {
+    return { data: { ...item, remindDays: item.remind_days, createdAt: item.created_at } }
+  }
+  return { data: item }
 }
 
 async function updateAnniversary(id, updates) {
@@ -459,7 +468,11 @@ async function updateAnniversary(id, updates) {
     return { error: { message: err.message || '更新纪念日失败' } }
   }
   const list = await response.json()
-  return { data: list?.[0] }
+  const item = list?.[0]
+  if (item) {
+    return { data: { ...item, remindDays: item.remind_days, createdAt: item.created_at } }
+  }
+  return { data: item }
 }
 
 async function deleteAnniversary(id) {
