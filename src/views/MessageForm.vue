@@ -283,6 +283,7 @@ async function onSave() {
 
 .form-textarea::placeholder {
   color: var(--text-hint);
+  opacity: 0.3;
 }
 
 /* Form hint */

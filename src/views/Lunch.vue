@@ -217,11 +217,13 @@ function showToastMsg(msg) {
 
 // 收藏列表（用于转圈）
 const favoritesList = computed(() => {
-  return favorites.value.map(f => ({
-    name: f.name,
-    emoji: f.emoji,
-    id: f.id
-  }))
+  return favorites.value
+    .filter(f => !excludedIds.value.includes(f.id))
+    .map(f => ({
+      name: f.name,
+      emoji: f.emoji,
+      id: f.id
+    }))
 })
 
 // 统计
@@ -262,9 +264,8 @@ function onSpinEnd(winner) {
   showResult.value = true
   const now = new Date()
   addLunchRecord({
-    restaurant: winner.name,
-    date: getTodayStr(),
-    time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    restaurant_name: winner.name,
+    selected_at: new Date().toISOString()
   })
   hapticFeedback(null, HAPTIC_PATTERNS.SPIN_STOP)
   launchConfetti()
@@ -272,11 +273,13 @@ function onSpinEnd(winner) {
 
 function closeResult() {
   showResult.value = false
+  excludedIds.value = []
 }
 
 function confirmResult() {
   showResult.value = false
   showToast({ message: `🎉 去吃 ${resultRestaurant.value.name}！`, type: 'success' })
+  excludedIds.value = []
 }
 
 function spinAgainExclude() {

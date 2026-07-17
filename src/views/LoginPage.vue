@@ -177,6 +177,10 @@ async function handleRegister() {
   margin-top: 8px;
 }
 
+van-field ::placeholder {
+  opacity: 0.3;
+}
+
 .login-tip {
   text-align: center;
   font-size: 13px;

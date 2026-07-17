@@ -3,6 +3,7 @@
 import { ref } from 'vue'
 import { safeGetString, safeSetString, STORAGE_KEYS, KEY_REMINDER_TIME, KEY_CUSTOM_REMINDER_TIME } from './useStorage.js'
 import { showToast } from 'vant'
+import { useDataStore } from '../stores/dataStore.js'
 
 const REMINDER_TIME_MAP = {
   noon: [12, 0],
@@ -50,6 +51,7 @@ function getMissedDays(anniversary, lastCheckinDate) {
 }
 
 export function useReminder() {
+  const dataStore = useDataStore()
   const notifEnabled = ref(
     safeGetString(STORAGE_KEYS.NOTIFICATION_ENABLED, 'true') === 'true'
   )
@@ -97,8 +99,11 @@ export function useReminder() {
 
     reminderTimer = setTimeout(() => {
       if (!notifEnabled.value) return
-      // 计算断连天数，选择分层文案
-      const missed = getMissedDays(state.loveAnniversary, state.lastCheckinDate)
+      // 计算断连天数，选择分层文案（从 dataStore 读取，避免硬编码 state 引用）
+      const missed = getMissedDays(
+        dataStore.state.settings?.love_anniversary,
+        dataStore.state.checkinStats?.last_checkin_date
+      )
       const pushMsg = getPushMessage(missed)
       // 发送浏览器通知
       if ('Notification' in window && Notification.permission === 'granted') {

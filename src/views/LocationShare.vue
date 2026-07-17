@@ -219,7 +219,7 @@ const mapHeight = ref(400)
 let mapInstance = null
 let geocoder = null
 let selfMarker = null
-let partnerMarkers = {}
+let partnerMarkers = ref({})
 
 // ========== 防抖 ==========
 
@@ -332,7 +332,7 @@ async function loadActiveShares() {
     // 获取每个共享关系的对方最新位置
     for (const share of data) {
       const partnerId = share.sender_id === currentUser.value.id ? share.receiver_id : share.sender_id
-      const { data: loc } = await locationShare.getPartnerLocation(share.id, partnerId)
+      const loc = await locationShare.getPartnerLocation(share.id, partnerId)
       if (loc) {
         partnerLocations.value[share.id] = loc
         // 逆地理编码
@@ -681,6 +681,10 @@ onUnmounted(() => {
 
 .search-input :deep(.van-field__control) {
   padding: 0 12px;
+}
+
+van-field ::placeholder {
+  opacity: 0.3;
 }
 
 .bell-btn {

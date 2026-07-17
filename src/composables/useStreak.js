@@ -15,7 +15,6 @@ function calculateStreak(history) {
   let streak = 0
   const today = new Date()
 
-  // 从今天开始向前检查
   for (let i = 0; ; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
@@ -24,10 +23,12 @@ function calculateStreak(history) {
     const hasRecord = history.some(h => h.date === dateStr)
     if (hasRecord) {
       streak++
-    } else if (i > 0) {
-      break  // 今天没打卡也算连续（今天还没到截止时间）
+    } else if (i === 0) {
+      // 今天还没打卡，但连续打卡可能从昨天开始，继续检查昨天
+      continue
     } else {
-      break  // 今天也没打卡
+      // 昨天或更早中断，连续打卡结束
+      break
     }
   }
   return streak

@@ -284,16 +284,18 @@ function onBoyfriendNameBlur() { showToast({ message: "已保存", type: "succes
 const reminderTime = computed({ get: () => rt.value || 'noon', set: v => updateSettings({ reminder_time: v }) })
 const customReminderTime = computed({ get: () => crt.value || '12:00', set: v => updateSettings({ custom_reminder_time: v }) })
 const notificationEnabled = computed({ get: () => notifEn.value !== false, set: v => setNotificationEnabled(v) })
-const { requestPermission, scheduleNotification, cancelNotifications } = useReminder()
+const { requestPermission, scheduleNotification, cancelNotifications, onToggleNotification: reminderToggle } = useReminder()
 
 async function onToggleNotification() {
   if (notificationEnabled.value) {
     await requestPermission()
     await scheduleNotification()
     updateSettings({ notification_enabled: true })
+    reminderToggle(true)
   } else {
     await cancelNotifications()
     updateSettings({ notification_enabled: false })
+    reminderToggle(false)
   }
 }
 
@@ -341,12 +343,16 @@ async function importData(event) {
   if (!file) return
   try {
     const text = await file.text()
-    const data = JSON.stringify(JSON.parse(text), null, 2)
-    // simple v1: just upload to server via updateSettings
-    if (data) {
-      showToast({ message: "导入成功，页面将刷新", type: "success" })
-      setTimeout(() => location.reload(), 1000)
+    const data = JSON.parse(text)
+    if (!data || typeof data !== "object") {
+      throw new Error("invalid format")
     }
+
+    if (data.settings && typeof data.settings === "object") {
+      await updateSettings(data.settings)
+    }
+    showToast({ message: "导入成功，页面将刷新", type: "success" })
+    setTimeout(() => location.reload(), 1000)
   } catch {
     showToast({ message: "导入失败：文件格式错误", type: "fail" })
   }
@@ -476,6 +482,8 @@ function formatDate(dateStr) {
 .setting-divider { height: 1px; background: var(--border); margin: 12px 0; }
 
 .setting-item-danger .setting-label { color: var(--danger); }
+
+van-field ::placeholder { opacity: 0.3; }
 
 .select-input, .time-input {
   border: 1px solid var(--border);

@@ -121,12 +121,16 @@ async function register(username, password, displayName = '') {
     currentUser.value = newUser
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser))
 
-    // 自动创建 user_settings
-    await supabaseFetch('/user_settings', {
-      method: 'POST',
-      headers: { 'Prefer': 'return=representation' },
-      body: JSON.stringify({ user_id: newUser.id }),
-    })
+    // 自动创建 user_settings（失败不阻断登录，后续可 lazy create）
+    try {
+      await supabaseFetch('/user_settings', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=representation' },
+        body: JSON.stringify({ user_id: newUser.id }),
+      })
+    } catch (e) {
+      console.error('[useDatabase] 创建 user_settings 失败:', e?.message || e)
+    }
 
     return { data: newUser }
   } catch (e) {
@@ -205,22 +209,39 @@ async function getCheckins() {
   const uid = currentUser.value.id
   const response = await supabaseFetch(`/checkins?user_id=eq.${uid}&select=*&order=date.desc`)
   if (!response.ok) return []
-  return await response.json()
+  const rows = await response.json()
+  // 前端期望字段：photo；Supabase 返回：photo_url
+  return rows.map(row => ({
+    ...row,
+    photo: row.photo_url || null,
+  }))
 }
 
 async function addCheckin(record) {
   if (!currentUser.value) return { error: { message: '未登录' } }
   const uid = currentUser.value.id
+  // 将 compliment 合并到 note 中，保留 time/timestamp 信息
+  let note = record.note || null
+  if (record.compliment) {
+    note = note ? `${note}\n\n💬 ${record.compliment}` : `💬 ${record.compliment}`
+  }
+  const body = {
+    user_id: uid,
+    date: record.date,
+    type: record.type || 'photo',
+    photo_url: record.photo_url || record.photo || null,
+    note: note,
+  }
+  // 如果有打卡时间，保存到 checkin_time 列（如果 Supabase 有该列）
+  if (record.time) {
+    body.checkin_time = record.time
+  } else if (record.timestamp) {
+    body.checkin_time = new Date(record.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  }
   const response = await supabaseFetch('/checkins', {
     method: 'POST',
     headers: { 'Prefer': 'return=representation' },
-    body: JSON.stringify({
-      user_id: uid,
-      date: record.date,
-      type: record.type || 'photo',
-      photo_url: record.photo_url || record.photo || null,
-      note: record.note || null,
-    }),
+    body: JSON.stringify(body),
   })
   if (!response.ok) {
     const err = await response.json().catch(() => ({}))
@@ -358,7 +379,17 @@ async function getMessages() {
   const uid = currentUser.value.id
   const response = await supabaseFetch(`/messages?user_id=eq.${uid}&select=*&order=created_at.desc`)
   if (!response.ok) return []
-  return await response.json()
+  const rows = await response.json()
+  // 字段映射：Supabase snake_case → 前端 camelCase
+  return rows.map(row => ({
+    ...row,
+    text: row.content || '',
+    author: row.author_name || '',
+    specialCondition: row.special_condition || null,
+    createdAt: row.created_at,
+    displayedDates: row.displayed_dates || [],
+    updatedAt: row.updated_at,
+  }))
 }
 
 async function addMessage(msg) {
@@ -373,6 +404,8 @@ async function addMessage(msg) {
       author_name: msg.author_name || '',
       icon: msg.icon || '💕',
       is_template: msg.is_template || false,
+      type: msg.type || 'text',
+      special_condition: msg.specialCondition || msg.special_condition || null,
     }),
   })
   if (!response.ok) {
@@ -386,10 +419,36 @@ async function addMessage(msg) {
 async function updateMessage(id, updates) {
   if (!currentUser.value) return { error: { message: '未登录' } }
   const uid = currentUser.value.id
+  // 字段映射：前端 camelCase → Supabase snake_case
+  const mapped = { ...updates }
+  if (mapped.text !== undefined) {
+    mapped.content = mapped.text
+    delete mapped.text
+  }
+  if (mapped.author !== undefined) {
+    mapped.author_name = mapped.author
+    delete mapped.author
+  }
+  if (mapped.specialCondition !== undefined) {
+    mapped.special_condition = mapped.specialCondition
+    delete mapped.specialCondition
+  }
+  if (mapped.createdAt !== undefined) {
+    mapped.created_at = mapped.createdAt
+    delete mapped.createdAt
+  }
+  if (mapped.displayedDates !== undefined) {
+    mapped.displayed_dates = mapped.displayedDates
+    delete mapped.displayedDates
+  }
+  if (mapped.updatedAt !== undefined) {
+    mapped.updated_at = mapped.updatedAt
+    delete mapped.updatedAt
+  }
   const response = await supabaseFetch(`/messages?id=eq.${id}&user_id=eq.${uid}`, {
     method: 'PATCH',
     headers: { 'Prefer': 'return=representation' },
-    body: JSON.stringify(updates),
+    body: JSON.stringify(mapped),
   })
   if (!response.ok) {
     const err = await response.json().catch(() => ({}))
@@ -537,7 +596,13 @@ async function getLunchHistory() {
   const uid = currentUser.value.id
   const response = await supabaseFetch(`/lunch_history?user_id=eq.${uid}&select=*&order=selected_at.desc`)
   if (!response.ok) return []
-  return await response.json()
+  const rows = await response.json()
+  // 前端期望字段：{ date, restaurant }；Supabase 返回：{ selected_at, restaurant_name }
+  return rows.map(row => ({
+    ...row,
+    date: row.selected_at ? row.selected_at.slice(0, 10) : '',
+    restaurant: row.restaurant_name || ''
+  }))
 }
 
 async function addLunchRecord(record) {

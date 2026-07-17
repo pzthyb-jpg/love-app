@@ -128,7 +128,7 @@ export function useLocationShare() {
   }
 
   async function respondInvite(id, action) {
-    const status = action === 'accept' ? 'accepted' : 'rejected'
+    const status = action === 'accepted' ? 'accepted' : 'rejected'
     const res = await supabaseFetch(`/location_invites?id=eq.${id}`, {
       method: 'PATCH',
       headers: { 'Prefer': 'return=representation' },

@@ -282,8 +282,9 @@ function handleTitleClick() {
   }
 }
 
-const quickCheckin = () => {
-  if (addQuickCheckin(getTodayStr())) {
+const quickCheckin = async () => {
+  const result = await addQuickCheckin(getTodayStr())
+  if (result) {
     showToast('✅ 已打卡')
   }
 }

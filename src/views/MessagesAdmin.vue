@@ -268,6 +268,10 @@ function typeLabel(type) {
   max-width: 300px;
 }
 
+van-field ::placeholder {
+  opacity: 0.3;
+}
+
 /* 表单 */
 .form-group {
   margin-bottom: var(--space-md);

@@ -474,6 +474,10 @@ function importData(event) {
   padding-bottom: var(--space-md);
 }
 
+van-field ::placeholder {
+  opacity: 0.3;
+}
+
 .wish-input {
   min-height: 72px;
 }

@@ -340,7 +340,7 @@ function toggleRemind(day) {
 .form-input::placeholder {
   color: var(--text-hint);
   font-size: 14px;
-  opacity: 0.6;
+  opacity: 0.3;
 }
 
 /* Watermark icon in right side */
@@ -428,7 +428,7 @@ function toggleRemind(day) {
 .form-textarea::placeholder {
   color: var(--text-hint);
   font-size: 14px;
-  opacity: 0.6;
+  opacity: 0.3;
 }
 
 .char-count {
