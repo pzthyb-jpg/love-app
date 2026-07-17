@@ -266,6 +266,25 @@ function onBubbleClick(wish) {
   // 点击可直接查看详情（暂时不实现复杂功能）
 }
 
+function onBubbleTouchStart(event, wish) {
+  isLongPress = false
+  selectedWish.value = wish
+  longPressProgress.value = 0
+  if (longPressTimer) clearInterval(longPressTimer)
+  let progress = 0
+  longPressTimer = setInterval(() => {
+    progress += 10
+    longPressProgress.value = progress
+    if (progress >= 100) {
+      clearInterval(longPressTimer)
+      longPressTimer = null
+      isLongPress = true
+      longPressProgress.value = 0
+      showActionMenu.value = true
+    }
+  }, 50)
+}
+
 function closeActionMenu() {
   selectedWish.value = null
 }
