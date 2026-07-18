@@ -136,7 +136,8 @@
             <div v-for="invite in pendingInvites" :key="invite.id" class="invite-item">
               <div class="invite-avatar">👤</div>
               <div class="invite-info">
-                <div class="invite-name">{{ invite.app_users?.[0]?.display_name || invite.app_users?.[0]?.username || '未知' }}</div>
+                <!-- 修复：getPendingInvites 返回 sender 对象，不是 app_users 数组 -->
+                                <div class="invite-name">{{ invite.sender?.display_name || invite.sender?.username || '未知' }}</div>
                 <div class="invite-time">{{ formatTime(invite.created_at) }}</div>
               </div>
               <div class="invite-actions">
@@ -345,13 +346,9 @@ async function loadActiveShares() {
   }
 }
 
+// 修复：getActiveShares 返回的 enriched 对象中包含 partner 属性
 function getPartnerName(share) {
-  // 从共享关系中获取对方信息
-  // 注意：这里假设我们有 partnerInfo 在 share 对象中
-  // 如果没有，则需要从 app_users 查询
-  if (share.partner_name) return share.partner_name
-  if (share.sender_id === currentUser.value.id) return '对方'
-  return '对方'
+  return share.partner?.display_name || share.partner?.username || '对方'
 }
 
 function getPartnerLocation(share) {

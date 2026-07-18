@@ -83,7 +83,8 @@
         <div v-for="item in blacklist" :key="item.id" class="manage-item">
           <div class="manage-avatar">👤</div>
           <div class="manage-info">
-            <div class="manage-name">{{ item.partner_name || '未知用户' }}</div>
+            <!-- 修复：getBlacklist 返回 {blocked_user_id, id}，无用户名信息 -->
+                        <div class="manage-name">{{ item.blocked_user_name || '已拉黑用户' }}</div>
             <div class="manage-time">{{ formatTime(item.created_at) }}拉黑</div>
           </div>
           <button class="manage-unblock-btn" @click="onUnblock(item)">解除</button>
@@ -183,10 +184,9 @@ const closingShare = ref(null)
 
 // ========== 方法 ==========
 
+// 修复：getActiveShares 返回的 enriched 对象中包含 partner 属性
 function getPartnerName(share) {
-  if (share.partner_name) return share.partner_name
-  if (share.sender_id === share.current_user_id) return '对方'
-  return '对方'
+  return share.partner?.display_name || share.partner?.username || '对方'
 }
 
 function formatTime(dateStr) {
