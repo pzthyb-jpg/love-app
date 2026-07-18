@@ -36,10 +36,9 @@ function getTodaysMessage(messages, currentDateStr, currentHour) {
 
   // 如果所有留言都已展示，重置
   if (available.length === 0) {
-    messages.forEach(m => { m.displayedDates = [] })
-    available = [...messages]
-    // 保存重置到 localStorage
-    return { reset: true }
+    // fix: 不直接修改入参，创建新对象避免副作用
+    available = messages.map(m => ({ ...m, displayedDates: [] }))
+    // fix: 返回实际留言而非 { reset: true }
   }
 
   // 2. 检查特殊日

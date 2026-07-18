@@ -10,6 +10,7 @@ import {
   safeSetJSON,
 } from '../composables/useStorage.js'
 import { hashPassword as _hp, verifyPassword as _vp, validatePasswordStrength, isLegacyHashFormat } from '../composables/usecrypto.js'
+import { checkMilestone } from '../composables/useStreak.js'
 
 const db = useDatabase()
 
@@ -198,11 +199,17 @@ async function recalculateStreak() {
   const streakData = calculateStreakFromHistory(state.checkinHistory)
   if (!state.checkinHistory.length) return
 
+  // fix: 同时检测并持久化新达成的徽章
+  const existingBadges = state.checkinStats?.badges || []
+  const newMilestone = checkMilestone(streakData.streakDays, existingBadges)
+  const updatedBadges = newMilestone ? [...existingBadges, newMilestone] : existingBadges
+
   const statsData = {
     streak_days: streakData.streakDays,
     last_checkin_date: streakData.lastCheckinDate,
     longest_streak: streakData.longestStreak,
     total_checkins: state.checkinHistory.length,
+    badges: updatedBadges,
   }
 
   const result = await db.updateCheckinStats(statsData)

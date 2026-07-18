@@ -135,7 +135,8 @@ import BadgeGrid from '../components/BadgeGrid.vue'
 import GalleryOverlay from '../components/GalleryOverlay.vue'
 import CameraGuideModal from '../components/CameraGuideModal.vue'
 
-const { state, girlfriendName, checkinStreak, addCheckin, updateStreak, addBadge } = useDataStore()
+// fix: 移除不存在的 updateStreak/addBadge，addCheckin 内部已通过 recalculateStreak 处理
+const { state, girlfriendName, addCheckin } = useDataStore()
 
 const videoRef = ref(null)
 const previewRef = ref(null)
@@ -273,7 +274,7 @@ function openAppSettings() {
 }
 
 // 确认打卡
-function confirmPhoto() {
+async function confirmPhoto() {
   if (!capturedPhoto.value) return
   const today = formatDate(new Date())
   const now = new Date()
@@ -281,19 +282,13 @@ function confirmPhoto() {
   const comp = generateCompliment(girlfriendName.value)
   compliment.value = comp
 
-  addCheckin({ date: today, time, photo: capturedPhoto.value, compliment: comp, timestamp: now.getTime() })
+  // fix: addCheckin 内部已调用 recalculateStreak，会自动更新 streak + badges
+  await addCheckin({ date: today, time, photo: capturedPhoto.value, compliment: comp, timestamp: now.getTime() })
 
+  // 检测里程碑（用于 UI 庆祝动画）
   const streak = calculateStreak(state.checkinHistory)
-  updateStreak({
-    streakDays: streak,
-    lastCheckinDate: today,
-    longestStreak: Math.max(streak, checkinStreak.value?.longestStreak || 0),
-    initialized: true
-  })
-
   const milestone = checkMilestone(streak, state.checkinStats?.badges || [])
   if (milestone) {
-    addBadge(milestone)
     newBadge.value = milestone
     showCelebration.value = true
     hapticFeedback(null, HAPTIC_PATTERNS.ACHIEVEMENT)

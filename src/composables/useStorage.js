@@ -220,7 +220,8 @@ async function getPhotos(dateStrs) {
           req.onerror = (e) => reject(e.target.error)
         })
         if (result && result.photo) {
-          photoMap.set(item.date, result.photo)
+          // fix: 修正循环变量引用，应使用 date 而非不存在的 item
+          photoMap.set(date, result.photo)
         }
       }
       db.close()

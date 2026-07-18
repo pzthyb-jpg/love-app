@@ -41,10 +41,10 @@
 ## 安全编码规则（不可协商）
 
 1. 用户输入 `{{ }}` 渲染，禁止 `v-html`
-2. 密码 PBKDF2 哈希，不存明文
+2. 密码 PBKDF2-SHA256 哈希 + 随机盐值（16字节） + 100,000 次迭代，不存明文
 3. 输入有 `maxlength`
 4. 权限在用户操作时请求
-5. 不硬编码 API key
+5. 不硬编码 API key（Supabase Key 和高德 Key 均通过 `.env` 注入）
 6. CSP 已配置
 
 完整规则：`docs/arch/SECURITY_REVIEW.md`
@@ -83,7 +83,12 @@
 
 ## 技术栈
 
-Vue 3 + Vite + PWA + Vant 4 | Composition API 优先 | localStorage 持久化
+Vue 3 + Vite + PWA + Vant 4 | Composition API 优先 | Supabase 后端（PostgreSQL + 自建 app_users 认证） | 高德 POI 搜索 | localStorage + IndexedDB 持久化 | 手写 reactive 单例状态管理（dataStore.js）
+
+### 关键数字（从代码统计）
+- 彩虹屁模板：36 个基础模板（按 beauty/makeup/energy/special/morning/noon/evening 分类，通过时间段 + 随机组合生成变体）
+- 餐厅数据：高德 POI 搜索实时获取（非预设数据）
+- 视图组件：13 个 | 可复用组件：6 个 | Composables：14 个
 
 ---
 
@@ -94,8 +99,9 @@ cat CHECKPOINT.md          # 流水线状态
 git log --oneline -5       # 最近提交
 npm run dev                # 开发
 npm run build              # 构建验证
+npx playwright test        # 运行测试
 ```
 
 ---
 
-> 最后更新：2026-07-07 | 基于 Harness Engineering × OpenAI 方法论
+> 最后更新：2026-07-18 | 基于 Harness Engineering × OpenAI 方法论

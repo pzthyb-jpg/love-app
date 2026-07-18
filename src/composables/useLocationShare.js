@@ -5,8 +5,11 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 const { currentUser } = useAuth()
 
-const FETCH_TIMEOUT = 15000
+const FETCH_TIMEOUT = 15000 // 15s timeout
+const MAX_RETRIES = 2 // 最多重试 2 次（指数退避：1s, 2s）
 
+// Supabase REST API 基础封装，含超时 + 重试策略
+// 与 useDatabase.js 保持一致：15s AbortController 超时，2 次指数退避重试
 async function supabaseFetch(path, options = {}) {
   const url = `${SUPABASE_URL}/rest/v1${path}`
   const headers = {
@@ -16,11 +19,24 @@ async function supabaseFetch(path, options = {}) {
     ...options.headers,
   }
   if (!options.headers?.Prefer) headers.Prefer = 'return=minimal'
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
-  const response = await fetch(url, { ...options, headers, signal: controller.signal })
-  clearTimeout(timer)
-  return response
+
+  // Timeout + Retry wrapper（指数退避，仅对网络错误重试）
+  let lastErr = null
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+      const response = await fetch(url, { ...options, headers, signal: controller.signal })
+      clearTimeout(timer)
+      return response
+    } catch (e) {
+      lastErr = e
+      // 仅对网络错误重试，用户取消或非 fetch 错误直接跳出
+      if (e.name === 'AbortError' || !e.message?.includes('fetch')) break
+      if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)))
+    }
+  }
+  throw lastErr
 }
 
 export function calcDistance(lat1, lng1, lat2, lng2) {
@@ -113,16 +129,21 @@ export function useLocationShare() {
     return { data: data?.[0], error: null }
   }
 
+  // 批量查询用户信息，避免 N+1 问题（原实现对每条邀请逐一 fetch 用户）
   async function getPendingInvites() {
     const uid = currentUser.value?.id
     if (!uid) return { data: [] }
     const res = await supabaseFetch(`/location_invites?receiver_id=eq.${uid}&status=eq.pending&select=*&order=created_at.desc`)
     if (!res.ok) return { data: [] }
     const invites = await res.json()
-    const enriched = await Promise.all(invites.map(async inv => {
-      const userRes = await supabaseFetch(`/app_users?id=eq.${inv.sender_id}&select=username,display_name,avatar`)
-      const users = await userRes.json().catch(() => [])
-      return { ...inv, sender: users?.[0] || null }
+    if (!invites.length) return { data: [] }
+
+    // 收集所有 sender_id，一次批量查询替代 N 次单条查询
+    const senderIds = [...new Set(invites.map(inv => inv.sender_id))]
+    const userMap = await batchFetchUsers(senderIds)
+    const enriched = invites.map(inv => ({
+      ...inv,
+      sender: userMap[inv.sender_id] || null,
     }))
     return { data: enriched }
   }
@@ -137,19 +158,38 @@ export function useLocationShare() {
     return res.ok ? { data: true } : { error: { message: '操作失败' } }
   }
 
+  // 批量查询用户信息，避免 N+1 问题（原实现对每条分享逐一 fetch 用户）
   async function getActiveShares() {
     const uid = currentUser.value?.id
     if (!uid) return { data: [] }
     const res = await supabaseFetch(`/location_invites?or=(sender_id.eq.${uid},receiver_id.eq.${uid})&status=eq.accepted&select=*`)
     if (!res.ok) return { data: [] }
     const shares = await res.json()
-    const enriched = await Promise.all(shares.map(async inv => {
+    if (!shares.length) return { data: [] }
+
+    // 收集所有 partner_id，一次批量查询替代 N 次单条查询
+    const partnerIds = [...new Set(
+      shares.map(inv => inv.sender_id === uid ? inv.receiver_id : inv.sender_id)
+    )]
+    const userMap = await batchFetchUsers(partnerIds)
+    const enriched = shares.map(inv => {
       const partnerId = inv.sender_id === uid ? inv.receiver_id : inv.sender_id
-      const userRes = await supabaseFetch(`/app_users?id=eq.${partnerId}&select=username,display_name,avatar`)
-      const users = await userRes.json().catch(() => [])
-      return { ...inv, partner: users?.[0] || null, relationship_id: inv.id }
-    }))
+      return { ...inv, partner: userMap[partnerId] || null, relationship_id: inv.id }
+    })
     return { data: enriched }
+  }
+
+  // 批量查询用户信息（PostgREST in 过滤），返回 { userId: userInfo } 映射
+  // 优化原因：避免 N+1 查询，将 N 次单条请求合并为 1 次批量请求
+  async function batchFetchUsers(userIds) {
+    if (!userIds.length) return {}
+    const idFilter = userIds.join(',')
+    const res = await supabaseFetch(`/app_users?id=in.(${idFilter})&select=id,username,display_name,avatar`)
+    if (!res.ok) return {}
+    const users = await res.json().catch(() => [])
+    const map = {}
+    users.forEach(u => { map[u.id] = u })
+    return map
   }
 
   async function uploadLocation(relationshipId, lat, lng, accuracy) {

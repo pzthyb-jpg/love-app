@@ -199,6 +199,49 @@
 
 ---
 
+## 六、2026-07-18 Bug 修复轮次经验教训
+
+> 日期：2026-07-18
+> 迭代范围：代码修复轮次（useStorage、Photo、Settings、useMessages、useLocationShare、Supabase SQL、脚手架清理）
+
+### [N+1 查询问题] — 逐一 fetch 不如批量查询
+- **表现**：`useLocationShare.js` 中 `getPendingInvites()` 和 `getActiveShares()` 先查列表，再对每条记录逐一 fetch 关联数据，导致请求数线性增长
+- **根因**：开发时为快速实现功能，使用了简单的循环查询，未考虑网络请求的累积开销
+- **教训**：数据库查询优先使用批量查询（`in` 过滤、JOIN）而非循环单条查询。评估查询复杂度时，要按「最坏数据量」而非「空数据」来判断
+- **解决方案**：改为一次批量查询，用 `id=in.(...)` 过滤，减少网络请求数
+
+### [重复代码的危害] — supabaseFetch 重试逻辑不一致
+- **表现**：`useDatabase.js` 实现了 15s 超时 + 2 次指数退避重试，但 `useLocationShare.js` 的 `supabaseFetch` 没有重试机制，导致弱网环境下位置共享功能率先失败
+- **根因**：两个文件在不同时间开发，未复用同一网络请求封装
+- **教训**：网络请求封装应提取为公共模块，所有 Supabase 调用共用同一份 `supabaseFetch`。当发现「两处代码做同一件事但实现不同」时，应立即统一
+- **解决方案**：为 `useLocationShare.js` 的 `supabaseFetch` 添加与 `useDatabase.js` 一致的重试逻辑。长期建议提取为独立模块
+
+### [死代码引用风险] — 引用不存在的方法会导致运行时无效
+- **表现**：`Photo.vue` 调用 `updateStreak()` 和 `addBadge()`，但这两个方法在 dataStore 中不存在（实际方法是 `calculateStreak`），导致打卡后 streak 数字和徽章始终不更新
+- **根因**：方法命名在开发过程中变更，但调用方未同步更新。无 TypeScript、无单元测试，使得此类问题在编译期无法暴露
+- **教训**：纯 JS 项目中，方法引用错误只能在运行时发现。核心逻辑（打卡、streak 计算）必须有 E2E 或单元测试覆盖。添加 TypeScript 可以从根本上避免此类问题
+- **解决方案**：将 `updateStreak`/`addBadge` 修正为实际存在的 `calculateStreak` 方法
+
+### [SQL 函数字段名不匹配] — 迁移脚本中的字段名必须与表定义一致
+- **表现**：`cleanup_old_location_data()` SQL 函数引用了不存在的列名，导致执行时报错
+- **根因**：编写 SQL 函数时凭记忆引用字段名，未对照表定义校验
+- **教训**：SQL 迁移脚本中的每个字段名必须与 CREATE TABLE 定义严格对照。建议在迁移脚本头部注释引用的表结构，或使用 `pg_typeof` 等做防御性检查
+- **解决方案**：新增迁移 `20260718_fix_cleanup_function.sql` 修正字段引用
+
+### [脚手架残留] — 项目交接时应清理无用文件
+- **表现**：项目中残留 `HelloWorld.vue`（Vite 脚手架默认组件，内容为空）和 `style.css`（空文件），增加代码噪音
+- **根因**：项目初始化后未清理脚手架生成的模板文件
+- **教训**：项目初始化后的第一步应是删除所有脚手架模板文件（HelloWorld.vue、默认 style.css 等），避免后续遗忘。Code Review 时应检查是否有无用文件
+- **解决方案**：删除 `HelloWorld.vue` 和 `style.css`
+
+### [纯函数副作用陷阱] — 函数不应修改入参
+- **表现**：`useMessages.js` 中 `getNextMessage()` 直接修改了传入的 `displayedDates` 数组，导致调用方的状态被意外改变
+- **根因**：JavaScript 数组/对象传参为引用传递，函数内部直接 push/splice 会影响原数组
+- **教训**：所有工具函数应遵循纯函数原则——不修改入参，返回新值。如必须修改，应在函数签名和文档中明确标注
+- **解决方案**：`getNextMessage()` 内部复制 `displayedDates` 后再操作，返回新的日期列表
+
+---
+
 > 本文档由审核/质量智能体自动生成
-> 日期：2026-07-03
-> 基于 love-app v1.0 源码 + DESIGN.md + PRD.md + DESIGN_THINKING.md + RESEARCH.md + AGENTS.md + REVIEW_DESIGN.md 的多文档审查
+> 最后更新：2026-07-18
+> 基于 love-app v2.0 源码 + 多文档审查 + 2026-07-18 Bug 修复轮次
