@@ -433,6 +433,13 @@ function importData(event) {
 /* 留言预览 */
 .msg-preview-card {
   cursor: pointer;
+  border: 1px solid rgba(232, 117, 138, 0.1);
+  background: linear-gradient(135deg, var(--bg-card), var(--warm-pink));
+  transition: transform var(--transition-fast);
+}
+
+.msg-preview-card:active {
+  transform: scale(0.98);
 }
 
 .msg-preview {
@@ -571,8 +578,9 @@ van-field ::placeholder {
 
 /* 愿望气泡 */
 .wish-bubble.wish {
-  background: linear-gradient(135deg, #F3E8FF, #E8F0FE);
-  border: 1px solid rgba(124, 58, 237, 0.15);
+  background: linear-gradient(135deg, #F3E8FF, #EDE9FE);
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.06);
 }
 
 .wish-bubble.wish .bubble-text {
@@ -582,7 +590,8 @@ van-field ::placeholder {
 /* 吐槽气泡 */
 .wish-bubble.vent {
   background: linear-gradient(135deg, #FFE5D9, #FFF0F3);
-  border: 1px solid rgba(214, 59, 95, 0.15);
+  border: 1px solid rgba(214, 59, 95, 0.12);
+  box-shadow: 0 2px 8px rgba(214, 59, 95, 0.06);
 }
 
 .wish-bubble.vent .bubble-text {
@@ -592,7 +601,8 @@ van-field ::placeholder {
 /* 已实现气泡 */
 .wish-bubble.fulfilled {
   background: linear-gradient(135deg, #FFF8E1, #FFFDE7) !important;
-  border: 1px solid rgba(255, 215, 0, 0.3) !important;
+  border: 1px solid rgba(251, 191, 36, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.08) !important;
 }
 
 .wish-bubble.fulfilled .bubble-text {
@@ -752,6 +762,7 @@ van-field ::placeholder {
 .fulfill-emoji {
   font-size: 48px;
   margin-bottom: var(--space-sm);
+  animation: bounceIn 0.4s ease;
 }
 .fulfill-label {
   font-size: var(--font-body-small);
@@ -782,33 +793,6 @@ van-field ::placeholder {
   justify-content: center;
   gap: var(--space-md);
   margin-top: var(--space-lg);
-}
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.dialog-box {
-  background: var(--cream);
-  border-radius: var(--radius-lg);
-  padding: var(--space-xl);
-  max-width: 340px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-.dialog-box h3 {
-  font-size: var(--font-h3);
-  font-weight: 600;
-  margin-bottom: var(--space-md);
-  text-align: center;
 }
 
 /* 移动端适配 */

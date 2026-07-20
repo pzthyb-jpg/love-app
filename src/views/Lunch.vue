@@ -364,6 +364,7 @@ onMounted(async () => {
   border: 1.5px solid var(--primary);
   border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(232, 117, 138, 0.15);
 }
 
 .capsule-btn {
@@ -506,13 +507,19 @@ onMounted(async () => {
 
 .poi-card {
   background: var(--white);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 14px;
   margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  transition: all 0.15s ease;
+}
+
+.poi-card:active {
+  transform: scale(0.98);
 }
 
 .poi-info {
@@ -659,12 +666,20 @@ onMounted(async () => {
 /* ===== 结果弹窗 ===== */
 .result-box {
   padding: var(--space-2xl);
+  text-align: center;
 }
 
 .result-emoji {
   font-size: 56px;
   margin-bottom: var(--space-md);
   animation: bounceIn 0.5s ease;
+}
+
+.result-box h3 {
+  font-size: var(--font-h2);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: var(--space-xs);
 }
 
 .result-sub {
@@ -791,28 +806,7 @@ onMounted(async () => {
   opacity: 1;
 }
 
-/* ===== Dialog Overlay (Teleport) ===== */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dialog-box {
-  background: var(--white);
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 320px;
-  width: 85%;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
+/* ===== Dialog Overlay (Teleport) - 使用全局样式 ===== */
 
 /* ===== 移动端适配 ===== */
 @media (min-width: 768px) {

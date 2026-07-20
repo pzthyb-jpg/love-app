@@ -441,101 +441,94 @@ function formatDate(dateStr) {
 
 <style scoped>
 .settings-page {
-  padding: 20px 16px 80px;
+  padding: 0 16px calc(var(--tabbar-height) + var(--space-2xl));
+  background: var(--bg-grouped);
 }
 
 .page-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  padding: var(--space-xl) 0 var(--space-md);
 }
-.page-header .emoji { font-size: 28px; }
-.page-header h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0; }
+.page-header .emoji { font-size: 24px; }
+.page-header h2 { font-size: var(--font-h2); font-weight: 700; color: var(--text); margin: 0; letter-spacing: -0.5px; }
 
-.card {
-  background: var(--white);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+/* iOS 分组卡片 */
+.settings-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 0 var(--space-lg);
+  margin-bottom: var(--space-md);
+  overflow: hidden;
 }
 
 .setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
+  padding: 12px 0;
   cursor: pointer;
+  min-height: 44px;
 }
-.setting-item-sub { margin-top: 8px; padding-left: 40px; }
+.setting-item-sub { padding-left: 40px; }
 
 .setting-info { display: flex; align-items: center; gap: 12px; flex: 1; }
-.setting-icon { font-size: 24px; width: 32px; text-align: center; }
+.setting-icon { font-size: 22px; width: 30px; text-align: center; flex-shrink: 0; }
 .setting-text { flex: 1; }
-.setting-label { font-size: 15px; font-weight: 500; color: var(--text-primary); }
-.setting-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.setting-label { font-size: var(--font-body-small); font-weight: 400; color: var(--text); }
+.setting-desc { font-size: var(--font-caption); color: var(--text-secondary); margin-top: 1px; }
 
-.setting-action { flex-shrink: 0; }
+.setting-action { flex-shrink: 0; display: flex; align-items: center; }
 .setting-arrow { font-size: 18px; color: var(--text-tertiary); }
+.manage-link { font-size: var(--font-caption); color: var(--primary); font-weight: 500; }
 
-.setting-divider { height: 1px; background: var(--border); margin: 12px 0; }
+/* iOS 风格分割线（缩进） */
+.setting-divider {
+  height: 0.5px;
+  background: var(--border);
+  margin-left: 42px;
+}
 
 .setting-item-danger .setting-label { color: var(--danger); }
 
 van-field ::placeholder { opacity: 0.3; }
 
 .select-input, .time-input {
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
   padding: 6px 10px;
-  font-size: 13px;
-  background: var(--bg);
-  color: var(--text-primary);
+  font-size: var(--font-caption);
+  background: var(--bg-grouped);
+  color: var(--text);
 }
 
 /* Account management */
-.account-management { padding: 4px 0; }
-.card-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0 0 12px; }
+.account-management { padding: var(--space-lg) 0; }
+.card-title { font-size: var(--font-h3); font-weight: 600; color: var(--text); margin: 0 0 12px; }
 .account-login { padding: 8px 0; }
 .account-info { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
 .account-avatar { font-size: 32px; }
 .account-meta { flex: 1; }
-.account-meta strong { color: var(--text-primary); font-size: 15px; }
-.account-display { color: var(--text-secondary); font-size: 13px; margin-left: 4px; }
+.account-meta strong { color: var(--text); font-size: var(--font-body-small); }
+.account-display { color: var(--text-secondary); font-size: var(--font-caption); margin-left: 4px; }
 
 /* Privacy card */
-.privacy-card { background: var(--bg); }
-.privacy-header { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
-.privacy-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+.privacy-card { background: transparent; padding: var(--space-lg) var(--space-lg); }
+.privacy-header { font-size: var(--font-caption); font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.privacy-list { margin: 0; padding-left: 18px; font-size: var(--font-caption); color: var(--text-tertiary); line-height: 1.8; }
 
 /* Anniversary countdown */
-.anniversary-countdown { margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 10px; }
+.anniversary-countdown { margin: 0 0 12px; padding: 12px; background: var(--bg-grouped); border-radius: var(--radius-md); }
 .countdown-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .countdown-row:last-child { margin-bottom: 0; }
-.countdown-emoji { font-size: 18px; }
-.countdown-text { font-size: 14px; color: var(--text-secondary); }
-.countdown-text strong { color: var(--primary); }
+.countdown-emoji { font-size: 16px; }
+.countdown-text { font-size: var(--font-caption); color: var(--text-secondary); }
+.countdown-text strong { color: var(--primary); font-weight: 600; }
 </style>
 
 <style>
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.5);
-}
-.dialog-box {
-  background: var(--white);
-  border-radius: 16px;
-  padding: 24px;
-  width: 85%;
-  max-width: 340px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-}
-.dialog-box h3 { font-size: 18px; font-weight: 600; margin: 0 0 4px; color: var(--text-primary); }
-.dialog-desc { font-size: 13px; color: var(--text-secondary); margin: 0; }
+/* 注册弹窗 - 使用全局 dialog 样式 */
+.dialog-box h3 { font-size: var(--font-h3); font-weight: 600; margin: 0 0 4px; color: var(--text); }
+.dialog-desc { font-size: var(--font-caption); color: var(--text-secondary); margin: 0; }
 </style>

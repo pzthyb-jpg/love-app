@@ -1,7 +1,7 @@
 /* ============================================================
    小皮爱情助手 v2.0 — 全局样式系统
-   设计语言：极简有设计感
-   参考：Apple HIG、Linear App、Notion
+   设计语言：Apple iOS 风格 — 清晰、简洁、好用
+   参考：iOS Settings / Health / Apple HIG
    ============================================================ */
 
 /* === CSS 变量体系 === */
@@ -11,10 +11,12 @@
   --primary-light: #F4A5B5;
   --primary-dark: #D45D72;
   
-  /* 背景与卡片 */
-  --bg: #F5F5F7;
+  /* 背景与卡片 — iOS 风格 */
+  --bg: #F2F2F7;
   --bg-card: #FFFFFF;
   --bg-overlay: rgba(0, 0, 0, 0.4);
+  --bg-grouped: #F2F2F7;
+  --bg-elevated: #FFFFFF;
   
   /* 情感语义色（降低饱和度） */
   --wish: #A78BFA;
@@ -30,34 +32,34 @@
   --border-light: #F2F2F7;
   --white: #FFFFFF;
   
-  /* 圆角系统（更克制） */
+  /* 圆角系统（iOS 风格） */
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-round: 999px;
   
-  /* 阴影系统（中性灰度） */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.08);
+  /* 阴影系统（iOS 风格 — 更轻柔） */
+  --shadow-sm: 0 0.5px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
   
-  /* 间距系统 */
+  /* 间距系统（iOS 风格 — 更宽松） */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 12px;
   --space-lg: 16px;
-  --space-xl: 24px;
+  --space-xl: 20px;
   --space-2xl: 32px;
   --space-3xl: 48px;
   
-  /* 字体变量（Apple HIG 层级） */
-  --font-h1: 22px;
-  --font-h2: 17px;
-  --font-h3: 15px;
-  --font-body: 15px;
-  --font-body-small: 13px;
-  --font-caption: 12px;
+  /* 字体变量（iOS 风格层级） */
+  --font-h1: 28px;
+  --font-h2: 22px;
+  --font-h3: 17px;
+  --font-body: 17px;
+  --font-body-small: 15px;
+  --font-caption: 13px;
   --font-badge: 11px;
   
   /* 过渡变量 */
@@ -69,6 +71,14 @@
   --cream: #FAFAFA;
   --peach: #FDE8E8;
   --coral: #FB7185;
+  --purple: #A78BFA;
+  --gold: #FBBF24;
+  --danger: #EF4444;
+  
+  /* 文本补充 */
+  --text-primary: #1D1D1F;
+  --text-light: #C7C7CC;
+  --text-hint: #AEAEB2;
   
   /* 安全区域 */
   --safe-top: env(safe-area-inset-top, 0px);
@@ -78,44 +88,44 @@
   --tabbar-height: 56px;
 }
 
-/* === Vant 主题覆盖 === */
+/* === Vant 主题覆盖（iOS 风格） === */
 :root {
   --van-primary-color: #E8758A;
   --van-primary-color-light: #F4A5B5;
   --van-primary-color-dark: #D45D72;
-  --van-button-radius: 12px;
+  --van-button-radius: 10px;
   --van-button-normal-font-size: 15px;
-  --van-button-large-height: 48px;
+  --van-button-large-height: 50px;
   --van-button-large-font-size: 17px;
   --van-button-small-height: 32px;
   --van-button-small-font-size: 13px;
   --van-cell-font-size: 15px;
   --van-cell-value-color: #86868B;
-  --van-cell-vertical-padding: 14px;
+  --van-cell-vertical-padding: 12px;
   --van-cell-horizontal-padding: 16px;
   --van-cell-border-color: #F2F2F7;
   --van-cell-background: #FFFFFF;
-  --van-dialog-border-radius: 16px;
+  --van-dialog-border-radius: 14px;
   --van-dialog-header-font-size: 17px;
   --van-dialog-message-font-size: 15px;
   --van-dialog-message-line-height: 1.5;
   --van-toast-border-radius: 12px;
   --van-toast-font-size: 14px;
   --van-tabbar-height: 56px;
-  --van-tabbar-item-font-size: 11px;
+  --van-tabbar-item-font-size: 10px;
   --van-tabbar-item-active-color: #E8758A;
   --van-tabbar-item-icon-size: 24px;
   --van-field-input-font-size: 15px;
   --van-field-label-font-size: 13px;
   --van-field-label-color: #86868B;
   --van-switch-size: 26px;
-  --van-switch-active-color: #6EE7B7;
-  --van-progress-height: 6px;
-  --van-progress-border-radius: 3px;
+  --van-switch-active-color: #34C759;
+  --van-progress-height: 4px;
+  --van-progress-border-radius: 2px;
   --van-tag-border-radius: 6px;
   --van-tag-font-size: 11px;
-  --van-picker-border-radius: 16px;
-  --van-action-sheet-border-radius: 16px;
+  --van-picker-border-radius: 14px;
+  --van-action-sheet-border-radius: 14px;
 }
 
 /* === 全局重置 === */
@@ -154,45 +164,45 @@ img {
 .page {
   min-height: 100vh;
   padding: 0 var(--space-lg) calc(var(--tabbar-height) + var(--space-xl));
-  background: var(--bg);
+  background: var(--bg-grouped);
 }
 
 .page-header {
   padding: var(--space-xl) 0 var(--space-lg);
-  text-align: center;
 }
 
 .page-header h1 {
-  font-size: 22px;
+  font-size: var(--font-h1);
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.5px;
 }
 
 .page-header p {
-  font-size: 14px;
+  font-size: var(--font-body-small);
   color: var(--text-secondary);
   margin-top: 4px;
 }
 
-/* === 卡片 === */
+/* === 卡片（iOS 分组风格） === */
 .card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: var(--space-xl);
+  padding: var(--space-lg);
   margin-bottom: var(--space-md);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
+  border: none;
 }
 
 .card-title {
-  font-size: 17px;
+  font-size: var(--font-h3);
   font-weight: 600;
   color: var(--text);
   margin-bottom: var(--space-md);
   letter-spacing: -0.3px;
 }
 
-/* === 按钮（Vant 覆盖前过渡使用） === */
+/* === 按钮（iOS 风格） === */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -201,16 +211,17 @@ img {
   border: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 15px;
+  font-size: var(--font-body-small);
   font-weight: 500;
   border-radius: var(--radius-md);
   padding: 10px 20px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   -webkit-font-smoothing: antialiased;
 }
 
 .btn:active {
   transform: scale(0.97);
+  opacity: 0.85;
 }
 
 .btn-primary {
@@ -242,22 +253,22 @@ img {
   padding: 6px 14px;
 }
 
-/* === 表单 === */
+/* === 表单（iOS 风格） === */
 .input {
   width: 100%;
-  padding: 10px 14px;
-  font-size: 15px;
+  padding: 11px 14px;
+  font-size: var(--font-body-small);
   font-family: inherit;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-md);
-  background: var(--bg-card);
+  background: var(--bg-grouped);
   color: var(--text);
   outline: none;
-  transition: border-color 0.2s;
+  transition: box-shadow 0.2s;
 }
 
 .input:focus {
-  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 .input::placeholder {
@@ -347,7 +358,7 @@ img {
 /* 后续逐步移到 Vant 组件中 */
 
 /* === Dark 模式补充覆盖 === */
-/* 仅对:root未通过JS设置的部分做属性选择器兜底 */
+/* 仅对:root未通过JS设置的部分做属性选择器兖底 */
 html[data-theme="dark"] .card {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
@@ -367,7 +378,96 @@ html[data-theme="dark"] .btn-secondary {
   color: var(--text);
 }
 
-/* 各主题色emoji微调（保持可读性） */
+html[data-theme="dark"] .dialog-box {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .dialog-overlay {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* === 全局弹窗（iOS Alert 风格） === */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  animation: overlayFadeIn 0.2s ease;
+}
+
+.dialog-box {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: var(--space-xl);
+  width: 85%;
+  max-width: 320px;
+  box-shadow: var(--shadow-lg);
+  animation: dialogSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialog-box h3 {
+  font-size: var(--font-h3);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 var(--space-sm);
+  text-align: center;
+}
+
+.dialog-desc {
+  font-size: var(--font-body-small);
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialogSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.1); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* === 页面头部统一（iOS 大标题风格） === */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl) 0 var(--space-lg);
+}
+
+.page-header .emoji {
+  font-size: 24px;
+}
+
+.page-header h2 {
+  font-size: var(--font-h2);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+/* === 各主题色emoji微调（保持可读性） === */
 html[data-color="rose"] .page-header h2 { color: var(--text); }
 html[data-color="violet"] .page-header h2 { color: var(--text); }
 html[data-color="sky"] .page-header h2 { color: var(--text); }

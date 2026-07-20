@@ -38,8 +38,16 @@
       未找到用户
     </div>
 
+    <!-- 地图加载失败 -->
+    <div v-if="mapLoadError" class="map-error">
+      <div class="empty-emoji">🗺️</div>
+      <p class="empty-title">地图加载失败</p>
+      <p class="empty-desc">请检查网络后刷新重试</p>
+      <button class="btn btn-primary" style="margin-top:12px;flex:none;padding:10px 24px;" @click="retryMapLoad">重试</button>
+    </div>
+
     <!-- 地图区域 -->
-    <div class="map-container">
+    <div v-show="!mapLoadError" class="map-container">
       <div id="location-map" class="map" :style="{ height: mapHeight + 'px' }"></div>
       <!-- 定位按钮 -->
       <button class="locate-btn" @click="centerOnMe">📍</button>
@@ -214,6 +222,7 @@ const drawerHeight = ref(80)
 const myLat = ref(0)
 const myLng = ref(0)
 const mapHeight = ref(400)
+const mapLoadError = ref(false)
 
 // ========== 地图相关 ==========
 
@@ -324,22 +333,26 @@ async function loadPendingInvites() {
 async function loadActiveShares() {
   const { data, error } = await locationShare.getActiveShares()
   if (error) {
-    showToast({ message: error.message, type: 'fail' })
+    showToast({ message: error.message || '加载共享数据失败', type: 'fail' })
     return
   }
   activeShares.value = data || []
 
-  if (data) {
+  if (data && data.length > 0) {
     // 获取每个共享关系的对方最新位置
     for (const share of data) {
-      const partnerId = share.sender_id === currentUser.value.id ? share.receiver_id : share.sender_id
-      const loc = await locationShare.getPartnerLocation(share.id, partnerId)
-      if (loc) {
-        partnerLocations.value[share.id] = loc
-        // 逆地理编码
-        reverseGeocode(loc.latitude, loc.longitude).then(addr => {
-          if (addr) partnerAddresses.value[share.id] = addr
-        })
+      try {
+        const partnerId = share.sender_id === currentUser.value?.id ? share.receiver_id : share.sender_id
+        const loc = await locationShare.getPartnerLocation(share.id, partnerId)
+        if (loc) {
+          partnerLocations.value[share.id] = loc
+          // 逆地理编码
+          reverseGeocode(loc.latitude, loc.longitude).then(addr => {
+            if (addr) partnerAddresses.value[share.id] = addr
+          })
+        }
+      } catch (e) {
+        // 单条失败不影响其他
       }
     }
     updatePartnerMarkers()
@@ -389,10 +402,19 @@ async function confirmCloseShare() {
 // ========== 地图初始化 ==========
 
 async function initMap() {
+  // 等待 AMap SDK 加载（可能网络慢还未加载完）
+  let retries = 0
+  while (typeof AMap === 'undefined' && retries < 10) {
+    await new Promise(r => setTimeout(r, 500))
+    retries++
+  }
   if (typeof AMap === 'undefined') {
-    showToast({ message: '地图加载失败，请刷新重试', type: 'fail' })
+    mapLoadError.value = true
+    // 地图加载失败仍然加载共享数据
+    await loadActiveShares()
     return
   }
+  mapLoadError.value = false
 
   // 获取当前位置
   const loc = await myGetLocation()
@@ -436,6 +458,11 @@ async function initMap() {
 
   // 加载共享关系并添加对方标记
   await loadActiveShares()
+}
+
+function retryMapLoad() {
+  mapLoadError.value = false
+  initMap()
 }
 
 async function myGetLocation() {
@@ -784,6 +811,16 @@ van-field ::placeholder {
 .map-container {
   position: relative;
   flex: 1;
+  margin-top: 60px;
+}
+
+.map-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
   margin-top: 60px;
 }
 

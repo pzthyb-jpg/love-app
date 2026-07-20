@@ -42,3 +42,4 @@ Thumbs.db
 
 # 旧项目
 verify.js/.env
+.vercel-tmp/

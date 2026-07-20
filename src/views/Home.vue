@@ -304,11 +304,9 @@ const quickCheckin = async () => {
 .home-title {
   font-size: var(--font-h1);
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
   cursor: default;
+  letter-spacing: -0.5px;
 }
 .settings-icon {
   position: absolute;
@@ -404,10 +402,7 @@ const quickCheckin = async () => {
 .love-days-number {
   font-size: 48px;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--primary), var(--purple));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary);
   line-height: 1.1;
 }
 .love-days-label {
@@ -435,16 +430,21 @@ const quickCheckin = async () => {
   padding: 14px;
   margin-top: var(--space-lg);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--primary);
   color: white;
-  font-size: 17px;
+  font-size: var(--font-h3);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
+}
+.checkin-btn:active:not(:disabled) {
+  transform: scale(0.97);
+  opacity: 0.85;
 }
 .checkin-btn:disabled {
-  background: var(--text-light);
+  background: var(--bg-grouped);
+  color: var(--text-secondary);
   cursor: default;
 }
 
@@ -508,10 +508,12 @@ const quickCheckin = async () => {
   transform: scale(0.95);
 }
 .status-circle.done {
-  background: linear-gradient(135deg, rgba(168, 230, 207, 0.3), rgba(168, 230, 207, 0.1));
+  background: linear-gradient(135deg, rgba(110, 231, 183, 0.2), rgba(110, 231, 183, 0.08));
+  border: 1px solid rgba(110, 231, 183, 0.3);
 }
 .status-circle.empty {
   background: var(--warm-pink);
+  border: 1px solid rgba(232, 117, 138, 0.15);
   animation: gentlePulse 2s ease-in-out infinite;
 }
 @keyframes gentlePulse {
@@ -519,7 +521,8 @@ const quickCheckin = async () => {
   50% { transform: scale(1.04); }
 }
 .status-circle.has-new {
-  background: linear-gradient(135deg, rgba(192, 132, 252, 0.3), rgba(192, 132, 252, 0.1));
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(167, 139, 250, 0.08));
+  border: 1px solid rgba(167, 139, 250, 0.3);
 }
 .circle-icon {
   font-size: 28px;
@@ -577,22 +580,23 @@ const quickCheckin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--warm-pink);
+  background: var(--border-light);
   font-size: var(--font-caption);
   font-weight: 500;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
 }
 .week-dot.checked {
-  background: linear-gradient(135deg, var(--primary-light), var(--primary));
+  background: var(--primary);
   color: white;
 }
 .week-dot.today {
   border: 2px solid var(--primary);
   font-weight: 700;
+  background: var(--warm-pink);
 }
 .week-dot.missed {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .streak-info {
@@ -625,8 +629,8 @@ const quickCheckin = async () => {
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-light), var(--primary));
-  border-radius: 3px;
+  background: var(--primary);
+  border-radius: 2px;
   transition: width 0.5s ease;
 }
 .progress-text {

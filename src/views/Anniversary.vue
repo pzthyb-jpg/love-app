@@ -161,6 +161,7 @@ onMounted(() => {
   font-size: 64px;
   margin-bottom: var(--space-lg);
   opacity: 0.6;
+  animation: bounceIn 0.5s ease;
 }
 
 .empty-state p {
@@ -183,9 +184,25 @@ onMounted(() => {
   margin-bottom: var(--space-md);
   border-left: 4px solid var(--anniv-color-anniversary);
   box-shadow: var(--shadow-sm);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   overflow: hidden;
+  animation: cardFadeIn 0.4s ease both;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anniv-card:active {
+  transform: scale(0.98);
 }
 
 .anniv-card.birthday {
@@ -201,8 +218,8 @@ onMounted(() => {
 }
 
 .anniv-card.today {
-  box-shadow: var(--anniv-today-shadow);
-  background: var(--anniv-gold-bg);
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.2);
+  background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
   border-left: none;
   border: 2px solid var(--anniv-gold);
 }
@@ -302,6 +319,13 @@ onMounted(() => {
   width: 52px;
   height: 52px;
   z-index: 99;
+  box-shadow: 0 4px 16px rgba(232, 117, 138, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fab-add:active {
+  transform: scale(0.9);
+  box-shadow: 0 2px 8px rgba(232, 117, 138, 0.3);
 }
 
 /* 表单 */

@@ -329,13 +329,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.date-card { text-align: center; padding: var(--space-md); }
-.date-display { font-size: var(--font-body); color: var(--text-secondary); }
+.date-card { text-align: center; padding: var(--space-md); background: linear-gradient(135deg, var(--warm-pink), var(--bg-card)); }
+.date-display { font-size: var(--font-body); color: var(--text-secondary); font-weight: 500; }
 
 .preview-area {
-  width: 100%; height: 280px; border-radius: var(--radius-md); overflow: hidden;
-  background: var(--warm-pink); display: flex; align-items: center; justify-content: center;
-  margin-bottom: var(--space-lg); border: 2px solid rgba(232, 117, 138, 0.15); position: relative;
+  width: 100%; height: 300px; border-radius: var(--radius-lg); overflow: hidden;
+  background: linear-gradient(160deg, var(--warm-pink), var(--peach)); display: flex; align-items: center; justify-content: center;
+  margin-bottom: var(--space-lg); border: 2px solid rgba(232, 117, 138, 0.12); position: relative;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 .preview-container { position: relative; width: 100%; height: 100%; }
 .preview-overlay {
@@ -355,15 +356,13 @@ onUnmounted(() => {
 .captured-actions .btn { flex: 1; }
 
 .celebration-box { text-align: center; }
-.dialog-box { background: var(--white); border-radius: 16px; width: 85%; max-width: 360px; padding: var(--space-2xl); }
-.dialog-box h3 { font-size: var(--font-h2); font-weight: 700; color: var(--text); margin-bottom: var(--space-sm); box-shadow: none; }
 .celebration-emoji { font-size: 64px; margin-bottom: var(--space-md); animation: bounceIn 0.5s ease; }
 .celebration-name { font-size: var(--font-h2); font-weight: 700; color: var(--primary); margin-top: var(--space-sm); }
 
-.reminder-card { padding: var(--space-lg) var(--space-xl); }
+.reminder-card { padding: var(--space-lg) var(--space-xl); border: 1px solid var(--border-light); }
 .reminder-header { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-lg); }
 .reminder-icon { font-size: 20px; }
-.reminder-title { font-size: var(--font-h3); font-weight: 600; }
+.reminder-title { font-size: var(--font-h3); font-weight: 600; color: var(--text); }
 .reminder-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); }
 .reminder-toggle { display: flex; align-items: center; gap: var(--space-sm); flex: 1; }
 .reminder-toggle span { font-size: var(--font-body-small); color: var(--text); }

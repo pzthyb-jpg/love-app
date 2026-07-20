@@ -46,54 +46,32 @@ CREATE TABLE IF NOT EXISTS location_blacklist (
 CREATE INDEX IF NOT EXISTS idx_blacklist_user ON location_blacklist(user_id);
 
 -- 4. RLS 策略
--- 邀请表：用户只能看到自己的邀请
+-- 注意：本项目使用自建认证（app_users + localStorage），不使用 Supabase Auth
+-- 因此 RLS 策略统一使用 USING(true)，与 app_users/checkins/wishes 等表保持一致
+-- 前端通过 user_id 过滤保证数据隔离
+
 ALTER TABLE location_invites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own invites" ON location_invites;
+DROP POLICY IF EXISTS "Users can insert invites" ON location_invites;
+DROP POLICY IF EXISTS "Users can update their own invites" ON location_invites;
+CREATE POLICY "location_invites_all" ON location_invites FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Users can view their own invites"
-  ON location_invites FOR SELECT
-  USING (sender_id = auth.uid() OR receiver_id = auth.uid());
-
-CREATE POLICY "Users can insert invites"
-  ON location_invites FOR INSERT
-  WITH CHECK (sender_id = auth.uid());
-
-CREATE POLICY "Users can update their own invites"
-  ON location_invites FOR UPDATE
-  USING (sender_id = auth.uid() OR receiver_id = auth.uid());
-
--- 位置记录表：用户只能看到自己的记录和共享对方的记录
 ALTER TABLE location_shares ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own shares" ON location_shares;
+DROP POLICY IF EXISTS "Users can insert their own shares" ON location_shares;
+CREATE POLICY "location_shares_all" ON location_shares FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Users can view their own shares"
-  ON location_shares FOR SELECT
-  USING (user_id = auth.uid() OR relationship_id IN (
-    SELECT id FROM location_invites WHERE sender_id = auth.uid() OR receiver_id = auth.uid()
-  ));
-
-CREATE POLICY "Users can insert their own shares"
-  ON location_shares FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
--- 黑名单表：用户只能看到自己的黑名单
 ALTER TABLE location_blacklist ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own blacklist"
-  ON location_blacklist FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Users can insert to their blacklist"
-  ON location_blacklist FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can delete from their blacklist"
-  ON location_blacklist FOR DELETE
-  USING (user_id = auth.uid());
+DROP POLICY IF EXISTS "Users can view their own blacklist" ON location_blacklist;
+DROP POLICY IF EXISTS "Users can insert to their blacklist" ON location_blacklist;
+DROP POLICY IF EXISTS "Users can delete from their blacklist" ON location_blacklist;
+CREATE POLICY "location_blacklist_all" ON location_blacklist FOR ALL USING (true) WITH CHECK (true);
 
 -- 5. 数据清理函数（30天过期）
 CREATE OR REPLACE FUNCTION cleanup_old_location_data()
 RETURNS void AS $$
 BEGIN
   DELETE FROM location_shares WHERE created_at < now() - interval '30 days';
-  DELETE FROM location_invites WHERE status IN ('rejected', 'expired', 'closed') AND updated_at < now() - interval '30 days';
+  DELETE FROM location_invites WHERE status IN ('rejected', 'expired', 'closed') AND created_at < now() - interval '30 days';
 END;
 $$ LANGUAGE plpgsql;

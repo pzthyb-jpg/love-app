@@ -105,21 +105,21 @@ async function handleRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #fef2f4 0%, #fde2e8 100%);
+  background: var(--bg-grouped);
   padding: 24px;
 }
 
 [data-theme='dark'] .login-page {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d1e20 100%);
+  background: var(--bg-grouped);
 }
 
 .login-container {
   width: 100%;
   max-width: 360px;
-  background: var(--white);
-  border-radius: 20px;
-  padding: 32px 24px;
-  box-shadow: 0 8px 30px rgba(232, 117, 138, 0.15);
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: 36px 24px;
+  box-shadow: var(--shadow-md);
 }
 
 .login-header {
@@ -133,44 +133,45 @@ async function handleRegister() {
 }
 
 .login-title {
-  font-size: 24px;
+  font-size: var(--font-h2);
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text);
+  letter-spacing: -0.5px;
 }
 
 .login-subtitle {
-  font-size: 14px;
+  font-size: var(--font-body-small);
   color: var(--text-secondary);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
+/* iOS 风格分段控件 */
 .login-tabs {
   display: flex;
-  background: var(--bg);
-  border-radius: 10px;
-  padding: 4px;
-  margin-bottom: 20px;
+  background: var(--bg-grouped);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: 24px;
 }
 
 .login-tab {
   flex: 1;
-  padding: 10px;
+  padding: 9px;
   border: none;
   background: transparent;
-  border-radius: 8px;
-  font-size: 15px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-body-small);
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .login-tab.active {
-  background: var(--white);
-  color: var(--primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: var(--bg-card);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .login-form {
@@ -183,8 +184,8 @@ van-field ::placeholder {
 
 .login-tip {
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-caption);
   color: var(--text-tertiary);
-  margin-top: 16px;
+  margin-top: 20px;
 }
 </style>
