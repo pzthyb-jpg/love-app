@@ -104,48 +104,63 @@ export function useLocationShare() {
   async function searchUsers(keyword) {
     if (!keyword || keyword.length < 2) return { data: [] }
     const uid = currentUser.value?.id
-    const res = await supabaseFetch(`/app_users?username=ilike.*${encodeURIComponent(keyword)}*&id=neq.${uid}&select=id,username,display_name,avatar&limit=20`)
-    if (!res.ok) return { data: [], error: { message: '搜索失败' } }
-    const users = await res.json()
-    const { data: blacklist } = await getBlacklist()
-    const blockedIds = blacklist ? blacklist.map(b => b.blocked_user_id) : []
-    return { data: users.filter(u => !blockedIds.includes(u.id)), error: null }
+    try {
+      const res = await supabaseFetch(`/app_users?or=(username.ilike.*${encodeURIComponent(keyword)}*,display_name.ilike.*${encodeURIComponent(keyword)}*)&id=neq.${uid}&select=id,username,display_name&limit=20`)
+      if (!res.ok) return { data: [], error: { message: '搜索失败' } }
+      const users = await res.json()
+      const { data: blacklist } = await getBlacklist()
+      const blockedIds = blacklist ? blacklist.map(b => b.blocked_user_id) : []
+      return { data: users.filter(u => !blockedIds.includes(u.id)), error: null }
+    } catch (e) {
+      return { data: [], error: { message: '网络异常，请稍后重试' } }
+    }
   }
 
   async function sendInvite(receiverId) {
     const uid = currentUser.value?.id
     if (!uid) return { error: { message: '未登录' } }
-    const res = await supabaseFetch('/location_invites', {
-      method: 'POST',
-      headers: { 'Prefer': 'return=representation' },
-      body: JSON.stringify({ sender_id: uid, receiver_id: receiverId, status: 'pending' }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      if (err.code === '23505') return { error: { message: '你已经邀请过 ta 了' } }
-      return { error: { message: '邀请失败，请稍后重试' } }
+    try {
+      const res = await supabaseFetch('/location_invites', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=representation' },
+        body: JSON.stringify({ sender_id: uid, receiver_id: receiverId, status: 'pending' }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        if (err.code === '23505') return { error: { message: '你已经邀请过 ta 了' } }
+        return { error: { message: err.message || '邀请失败，请稍后重试' } }
+      }
+      const data = await res.json()
+      return { data: data?.[0], error: null }
+    } catch (e) {
+      return { error: { message: '网络异常，请稍后重试' } }
     }
-    const data = await res.json()
-    return { data: data?.[0], error: null }
   }
 
   // 批量查询用户信息，避免 N+1 问题（原实现对每条邀请逐一 fetch 用户）
   async function getPendingInvites() {
     const uid = currentUser.value?.id
-    if (!uid) return { data: [] }
-    const res = await supabaseFetch(`/location_invites?receiver_id=eq.${uid}&status=eq.pending&select=*&order=created_at.desc`)
-    if (!res.ok) return { data: [] }
-    const invites = await res.json()
-    if (!invites.length) return { data: [] }
+    if (!uid) return { data: [], error: { message: '未登录' } }
+    try {
+      const res = await supabaseFetch(`/location_invites?receiver_id=eq.${uid}&status=eq.pending&select=*&order=created_at.desc`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        return { data: [], error: { message: err.message || '获取邀请失败' } }
+      }
+      const invites = await res.json()
+      if (!invites.length) return { data: [] }
 
-    // 收集所有 sender_id，一次批量查询替代 N 次单条查询
-    const senderIds = [...new Set(invites.map(inv => inv.sender_id))]
-    const userMap = await batchFetchUsers(senderIds)
-    const enriched = invites.map(inv => ({
-      ...inv,
-      sender: userMap[inv.sender_id] || null,
-    }))
-    return { data: enriched }
+      // 收集所有 sender_id，一次批量查询替代 N 次单条查询
+      const senderIds = [...new Set(invites.map(inv => inv.sender_id))]
+      const userMap = await batchFetchUsers(senderIds)
+      const enriched = invites.map(inv => ({
+        ...inv,
+        sender: userMap[inv.sender_id] || null,
+      }))
+      return { data: enriched }
+    } catch (e) {
+      return { data: [], error: { message: '网络异常，请稍后重试' } }
+    }
   }
 
   async function respondInvite(id, action) {
@@ -161,22 +176,29 @@ export function useLocationShare() {
   // 批量查询用户信息，避免 N+1 问题（原实现对每条分享逐一 fetch 用户）
   async function getActiveShares() {
     const uid = currentUser.value?.id
-    if (!uid) return { data: [] }
-    const res = await supabaseFetch(`/location_invites?or=(sender_id.eq.${uid},receiver_id.eq.${uid})&status=eq.accepted&select=*`)
-    if (!res.ok) return { data: [] }
-    const shares = await res.json()
-    if (!shares.length) return { data: [] }
+    if (!uid) return { data: [], error: { message: '未登录' } }
+    try {
+      const res = await supabaseFetch(`/location_invites?or=(sender_id.eq.${uid},receiver_id.eq.${uid})&status=eq.accepted&select=*`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        return { data: [], error: { message: err.message || '获取共享列表失败' } }
+      }
+      const shares = await res.json()
+      if (!shares.length) return { data: [] }
 
-    // 收集所有 partner_id，一次批量查询替代 N 次单条查询
-    const partnerIds = [...new Set(
-      shares.map(inv => inv.sender_id === uid ? inv.receiver_id : inv.sender_id)
-    )]
-    const userMap = await batchFetchUsers(partnerIds)
-    const enriched = shares.map(inv => {
-      const partnerId = inv.sender_id === uid ? inv.receiver_id : inv.sender_id
-      return { ...inv, partner: userMap[partnerId] || null, relationship_id: inv.id }
-    })
-    return { data: enriched }
+      // 收集所有 partner_id，一次批量查询替代 N 次单条查询
+      const partnerIds = [...new Set(
+        shares.map(inv => inv.sender_id === uid ? inv.receiver_id : inv.sender_id)
+      )]
+      const userMap = await batchFetchUsers(partnerIds)
+      const enriched = shares.map(inv => {
+        const partnerId = inv.sender_id === uid ? inv.receiver_id : inv.sender_id
+        return { ...inv, partner: userMap[partnerId] || null, relationship_id: inv.id }
+      })
+      return { data: enriched }
+    } catch (e) {
+      return { data: [], error: { message: '网络异常，请稍后重试' } }
+    }
   }
 
   // 批量查询用户信息（PostgREST in 过滤），返回 { userId: userInfo } 映射
@@ -184,7 +206,7 @@ export function useLocationShare() {
   async function batchFetchUsers(userIds) {
     if (!userIds.length) return {}
     const idFilter = userIds.join(',')
-    const res = await supabaseFetch(`/app_users?id=in.(${idFilter})&select=id,username,display_name,avatar`)
+    const res = await supabaseFetch(`/app_users?id=in.(${idFilter})&select=id,username,display_name`)
     if (!res.ok) return {}
     const users = await res.json().catch(() => [])
     const map = {}
@@ -195,18 +217,26 @@ export function useLocationShare() {
   async function uploadLocation(relationshipId, lat, lng, accuracy) {
     const uid = currentUser.value?.id
     if (!uid) return { error: { message: '未登录' } }
-    const res = await supabaseFetch('/location_shares', {
-      method: 'POST',
-      body: JSON.stringify({ relationship_id: relationshipId, user_id: uid, latitude: lat, longitude: lng, accuracy }),
-    })
-    return res.ok ? { data: true } : { error: { message: '上传失败' } }
+    try {
+      const res = await supabaseFetch('/location_shares', {
+        method: 'POST',
+        body: JSON.stringify({ relationship_id: relationshipId, user_id: uid, latitude: lat, longitude: lng, accuracy }),
+      })
+      return res.ok ? { data: true } : { error: { message: '上传位置失败' } }
+    } catch (e) {
+      return { error: { message: '网络异常' } }
+    }
   }
 
   async function getPartnerLocation(relationshipId, partnerId) {
-    const res = await supabaseFetch(`/location_shares?relationship_id=eq.${relationshipId}&user_id=eq.${partnerId}&order=created_at.desc&limit=1`)
-    if (!res.ok) return null
-    const list = await res.json()
-    return list?.[0] || null
+    try {
+      const res = await supabaseFetch(`/location_shares?relationship_id=eq.${relationshipId}&user_id=eq.${partnerId}&order=created_at.desc&limit=1`)
+      if (!res.ok) return null
+      const list = await res.json()
+      return list?.[0] || null
+    } catch (e) {
+      return null
+    }
   }
 
   async function clearCachedLocations() {
