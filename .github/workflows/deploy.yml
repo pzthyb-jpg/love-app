@@ -25,6 +25,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_AMAP_KEY: ${{ secrets.VITE_AMAP_KEY }}
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3.14.1
         with:
