@@ -7,11 +7,12 @@
     <div v-if="photos.length > 0" class="photo-grid">
       <div
         v-for="(item, index) in photos"
-        :key="item.date"
+        :key="item.id || item.owner + '-' + item.date"
         class="photo-thumb"
         @click="$emit('open', index)"
       >
         <img :src="item.photo" :alt="item.date" loading="lazy" />
+        <span v-if="item.ownerName" class="owner-badge" :class="item.owner">{{ item.ownerName }}</span>
       </div>
     </div>
     <div v-else class="empty-state" style="padding:var(--space-lg)">
@@ -55,6 +56,7 @@ defineEmits(['open'])
   cursor: pointer;
   background: var(--warm-pink);
   animation: thumbFadeIn 0.35s ease both;
+  position: relative;
 }
 .photo-thumb:nth-child(1) { animation-delay: 0ms; }
 .photo-thumb:nth-child(2) { animation-delay: 40ms; }
@@ -81,5 +83,30 @@ defineEmits(['open'])
 }
 .photo-thumb:active img {
   transform: scale(1.05);
+}
+
+/* 属主角标（区分两人照片） */
+.owner-badge {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  max-width: calc(100% - 8px);
+  padding: 2px 7px;
+  border-radius: var(--radius-round);
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+.owner-badge.me {
+  background: rgba(0, 0, 0, 0.45);
+  color: #FFFFFF;
+}
+.owner-badge.partner {
+  background: rgba(232, 117, 138, 0.85);
+  color: #FFFFFF;
 }
 </style>

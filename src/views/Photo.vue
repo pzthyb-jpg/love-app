@@ -18,7 +18,14 @@
           <van-loading type="spinner" color="var(--primary)" />
           <p>正在打开摄像头...</p>
         </div>
-        <video v-else-if="cameraState === 'ready'" ref="videoRef" class="video-preview" autoplay playsinline></video>
+        <div v-else-if="cameraState === 'ready'" class="video-wrapper">
+          <video ref="videoRef" class="video-preview" autoplay playsinline></video>
+          <!-- 姿势引导叠加层 -->
+          <div v-if="selectedPose" class="pose-overlay">
+            <PoseFigure :pose="selectedPose" />
+            <span class="pose-overlay-name">{{ selectedPose.emoji }} {{ selectedPose.name }}</span>
+          </div>
+        </div>
         <img v-else-if="capturedPhoto && cameraState === 'captured'" :src="capturedPhoto" class="photo-preview" />
         <div v-else-if="cameraState === 'preview'" class="preview-container">
           <img :src="capturedPhoto" class="photo-preview" />
@@ -50,6 +57,26 @@
         <div v-else-if="cameraState === 'captured'" class="captured-actions">
           <van-button type="default" @click="retakePhoto">📸 再拍一张</van-button>
           <van-button type="primary" @click="confirmPhoto">❤️ 用这张</van-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 拍照姿势引导 -->
+    <div class="card pose-card">
+      <div class="pose-header">
+        <span class="pose-title">📷 拍照姿势</span>
+        <span class="pose-hint">{{ selectedPose ? '拍摄时跟着摆～再点一下取消' : '选一个姿势，拍摄时叠加引导' }}</span>
+      </div>
+      <div class="pose-strip">
+        <div
+          v-for="pose in poses"
+          :key="pose.id"
+          class="pose-item"
+          :class="{ active: selectedPose?.id === pose.id }"
+          @click="selectPose(pose)"
+        >
+          <div class="pose-fig"><PoseFigure :pose="pose" /></div>
+          <span class="pose-name">{{ pose.name }}</span>
         </div>
       </div>
     </div>
@@ -128,12 +155,14 @@ import { calculateStreak, checkMilestone, getNextMilestone, BADGE_DEFINITIONS } 
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
 import { useReminder } from '../composables/useReminder.js'
 import { generateCompliment } from '../composables/useCompliments.js'
+import { usePoses } from '../composables/usePoses.js'
 
 import ComplimentCard from '../components/ComplimentCard.vue'
 import PhotoWall from '../components/PhotoWall.vue'
 import BadgeGrid from '../components/BadgeGrid.vue'
 import GalleryOverlay from '../components/GalleryOverlay.vue'
 import CameraGuideModal from '../components/CameraGuideModal.vue'
+import PoseFigure from '../components/PoseFigure.vue'
 
 // fix: 移除不存在的 updateStreak/addBadge，addCheckin 内部已通过 recalculateStreak 处理
 const { state, girlfriendName, addCheckin } = useDataStore()
@@ -146,6 +175,13 @@ const cameraState = ref('idle')
 const capturedPhoto = ref(null)
 const compliment = ref('')
 let mediaStream = null
+
+// 拍照姿势引导
+const { poses } = usePoses()
+const selectedPose = ref(null)
+function selectPose(pose) {
+  selectedPose.value = selectedPose.value?.id === pose.id ? null : pose
+}
 
 // 弹窗
 const showCameraGuide = ref(false)
@@ -183,12 +219,25 @@ const currentTime = computed(() => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 })
 
-// 最近14天照片
+// 最近14天照片（情侣绑定后合并两人照片，混合时间轴 + 属主角标）
 const recentPhotos = computed(() => {
   const fourteenDaysAgo = new Date()
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
   const cutoff = formatDate(fourteenDaysAgo)
-  return state.checkinHistory.filter(h => h.date >= cutoff && h.photo).slice(0, 14)
+
+  const mine = state.checkinHistory
+    .filter(h => h.date >= cutoff && h.photo)
+    .map(h => ({ ...h, owner: 'me', ownerName: '我' }))
+
+  const partnerName = state.partnerInfo?.display_name || state.partnerInfo?.username || 'TA'
+  const theirs = state.partnerCheckins
+    .filter(h => h.date >= cutoff && h.photo)
+    .map(h => ({ ...h, owner: 'partner', ownerName: partnerName }))
+
+  // 按日期倒序混合，取最近 14 条
+  return [...mine, ...theirs]
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .slice(0, 14)
 })
 
 // 全部徽章
@@ -221,11 +270,16 @@ async function openCamera() {
       video: { facingMode: 'user', width: { ideal: 540 }, height: { ideal: 540 } },
       audio: false
     })
+    // 先切换到 ready 让 <video> 渲染出来，再赋值媒体流。
+    // 修复前：opening 状态下 video 未渲染，videoRef 为 null，
+    // srcObject 赋值被跳过 → 摄像头已唤起但预览黑屏。
+    cameraState.value = 'ready'
     await nextTick()
     if (videoRef.value) {
       videoRef.value.srcObject = mediaStream
+      // iOS 部分机型 autoplay 不生效，显式播放一次
+      await videoRef.value.play().catch(() => {})
     }
-    cameraState.value = 'ready'
   } catch (e) {
     cameraState.value = 'idle'
     showCameraGuide.value = true
@@ -348,12 +402,48 @@ onUnmounted(() => {
 .preview-actions { display: flex; gap: var(--space-md); justify-content: center; }
 
 .video-preview, .photo-preview { width: 100%; height: 100%; object-fit: cover; }
+.video-wrapper { position: relative; width: 100%; height: 100%; }
+.pose-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; pointer-events: none;
+  color: rgba(255, 255, 255, 0.85);
+}
+.pose-overlay .pose-figure { width: 62%; height: 62%; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
+.pose-overlay-name {
+  margin-top: var(--space-sm); font-size: var(--font-body-small); font-weight: 600;
+  background: rgba(0, 0, 0, 0.45); padding: 4px 14px; border-radius: var(--radius-round);
+}
 .preview-loading { text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-md); }
 .preview-loading p { font-size: var(--font-body-small); color: var(--text-secondary); }
 .preview-placeholder { text-align: center; color: var(--text-secondary); }
 .placeholder-icon { font-size: 48px; display: block; margin-bottom: var(--space-sm); }
 .captured-actions { display: flex; gap: var(--space-md); }
 .captured-actions .btn { flex: 1; }
+
+/* === 拍照姿势库 === */
+.pose-card { padding: var(--space-lg); }
+.pose-header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-md); }
+.pose-title { font-size: var(--font-h3); font-weight: 600; color: var(--text); }
+.pose-hint { font-size: var(--font-caption); color: var(--text-secondary); text-align: right; }
+.pose-strip {
+  display: flex; gap: var(--space-md); overflow-x: auto;
+  padding-bottom: var(--space-xs); -webkit-overflow-scrolling: touch;
+}
+.pose-strip::-webkit-scrollbar { display: none; }
+.pose-item {
+  flex: 0 0 auto; width: 76px; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; padding: var(--space-md) var(--space-sm);
+  border-radius: var(--radius-md); border: 1.5px solid var(--border-light);
+  background: var(--bg-grouped); color: var(--text-secondary);
+  cursor: pointer; transition: all var(--transition-fast);
+}
+.pose-item:active { transform: scale(0.95); }
+.pose-fig { width: 48px; height: 48px; }
+.pose-name { font-size: var(--font-caption); white-space: nowrap; }
+.pose-item.active {
+  border-color: var(--primary); color: var(--primary);
+  background: var(--warm-pink); font-weight: 600;
+}
 
 .celebration-box { text-align: center; }
 .celebration-emoji { font-size: 64px; margin-bottom: var(--space-md); animation: bounceIn 0.5s ease; }

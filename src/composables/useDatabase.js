@@ -668,6 +668,82 @@ async function updateCheckinStats(updates) {
   }
 }
 
+// ========== 情侣绑定 (照片墙共有) ==========
+
+// 按 id 查询用户基本信息（用于展示另一半昵称）
+async function getUserById(id) {
+  if (!id) return null
+  const response = await supabaseFetch(`/app_users?id=eq.${id}&select=id,username,display_name`)
+  if (!response.ok) return null
+  const list = await response.json()
+  return list?.[0] || null
+}
+
+// 搜索用户（用于绑定另一半，排除自己）
+async function searchUsers(keyword) {
+  if (!currentUser.value) return []
+  if (!keyword || !keyword.trim()) return []
+  const uid = currentUser.value.id
+  const kw = encodeURIComponent(keyword.trim())
+  const response = await supabaseFetch(
+    `/app_users?or=(username.ilike.*${kw}*,display_name.ilike.*${kw}*)&id=neq.${uid}&select=id,username,display_name&limit=10`
+  )
+  if (!response.ok) return []
+  return await response.json()
+}
+
+// 查询另一半的打卡记录（照片墙合并展示）
+async function getPartnerCheckins(partnerId) {
+  if (!partnerId) return []
+  const response = await supabaseFetch(`/checkins?user_id=eq.${partnerId}&select=*&order=date.desc`)
+  if (!response.ok) return []
+  const rows = await response.json()
+  return rows.map(row => ({ ...row, photo: row.photo_url || null }))
+}
+
+// 绑定另一半（双向写入：我.partner=对方 且 对方.partner=我）
+async function bindPartner(partnerId) {
+  if (!currentUser.value) return { error: { message: '未登录' } }
+  const uid = currentUser.value.id
+  const now = new Date().toISOString()
+  try {
+    const mine = await supabaseFetch(`/user_settings?user_id=eq.${uid}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ partner_id: partnerId, updated_at: now }),
+    })
+    if (!mine.ok) return { error: { message: '绑定失败，请稍后重试' } }
+    // 同步写入对方的设置（RLS 为 USING(true)，可跨用户更新）
+    await supabaseFetch(`/user_settings?user_id=eq.${partnerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ partner_id: uid, updated_at: now }),
+    })
+    return { data: true }
+  } catch (e) {
+    return { error: { message: '网络异常，请稍后重试' } }
+  }
+}
+
+// 解除绑定（双向清除）
+async function unbindPartner(partnerId) {
+  if (!currentUser.value) return { error: { message: '未登录' } }
+  const uid = currentUser.value.id
+  try {
+    await supabaseFetch(`/user_settings?user_id=eq.${uid}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ partner_id: null }),
+    })
+    if (partnerId) {
+      await supabaseFetch(`/user_settings?user_id=eq.${partnerId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ partner_id: null }),
+      })
+    }
+    return { data: true }
+  } catch (e) {
+    return { error: { message: '网络异常，请稍后重试' } }
+  }
+}
+
 // ========== 初始化 ==========
 
 function initAuth() {
@@ -732,5 +808,11 @@ export function useDatabase() {
     // Lunch
     getLunchHistory,
     addLunchRecord,
+    // 情侣绑定
+    getUserById,
+    searchUsers,
+    getPartnerCheckins,
+    bindPartner,
+    unbindPartner,
   }
 }

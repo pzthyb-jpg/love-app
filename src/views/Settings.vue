@@ -21,6 +21,66 @@
       <div class="setting-divider"></div>
     </div>
 
+    <!-- 我的另一半（照片墙共有） -->
+    <div class="card settings-card">
+      <!-- 已绑定 -->
+      <div v-if="state.partnerInfo" class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">💑</div>
+          <div class="setting-text">
+            <div class="setting-label">我的另一半</div>
+            <div class="setting-desc">{{ state.partnerInfo.display_name || state.partnerInfo.username }} · 照片墙已共享</div>
+          </div>
+        </div>
+        <div class="setting-action">
+          <span class="unbind-link" @click="confirmUnbind">解除</span>
+        </div>
+      </div>
+      <!-- 未绑定 -->
+      <div v-else class="setting-item" @click="showPartnerSearch = !showPartnerSearch">
+        <div class="setting-info">
+          <div class="setting-icon">💑</div>
+          <div class="setting-text">
+            <div class="setting-label">绑定另一半</div>
+            <div class="setting-desc">绑定后，回忆照片墙将两人共有</div>
+          </div>
+        </div>
+        <div class="setting-action">
+          <span class="manage-link">{{ showPartnerSearch ? '收起' : '去绑定 ›' }}</span>
+        </div>
+      </div>
+      <!-- 搜索绑定区 -->
+      <div v-if="!state.partnerInfo && showPartnerSearch" class="partner-search">
+        <div class="partner-search-bar">
+          <input
+            v-model="partnerKeyword"
+            class="input partner-input"
+            placeholder="输入对方用户名或昵称"
+            maxlength="20"
+            @keyup.enter="onSearchPartner"
+          />
+          <button class="btn btn-primary btn-small" @click="onSearchPartner">
+            {{ searchingPartner ? '搜索中' : '搜索' }}
+          </button>
+        </div>
+        <div v-if="partnerResults.length" class="partner-results">
+          <div
+            v-for="u in partnerResults"
+            :key="u.id"
+            class="partner-result-item"
+            @click="askBind(u)"
+          >
+            <div class="partner-result-text">
+              <span class="partner-result-name">{{ u.display_name || u.username }}</span>
+              <span class="partner-result-username">@{{ u.username }}</span>
+            </div>
+            <span class="partner-bind-btn">绑定</span>
+          </div>
+        </div>
+        <p v-else-if="partnerKeyword && !searchingPartner" class="partner-empty">没有找到相关用户</p>
+      </div>
+    </div>
+
     <div class="card settings-card">
       <div class="setting-item">
         <div class="setting-info">
@@ -139,29 +199,6 @@
     </div>
 
     <div class="card settings-card">
-      <div class="setting-item" @click="exportData">
-        <div class="setting-info">
-          <div class="setting-icon">📤</div>
-          <div class="setting-text">
-            <div class="setting-label">导出全部数据</div>
-            <div class="setting-desc">将所有数据导出为 JSON 文件</div>
-          </div>
-        </div>
-        <div class="setting-arrow">›</div>
-      </div>
-      <div class="setting-divider"></div>
-      <div class="setting-item" @click="triggerImport">
-        <div class="setting-info">
-          <div class="setting-icon">📥</div>
-          <div class="setting-text">
-            <div class="setting-label">导入恢复数据</div>
-            <div class="setting-desc">从备份文件恢复全部数据</div>
-          </div>
-        </div>
-        <div class="setting-arrow">›</div>
-      </div>
-      <input ref="importInputRef" type="file" accept=".json" @change="importData" style="display:none" />
-      <div class="setting-divider"></div>
       <div class="setting-item setting-item-danger" @click="confirmClearAllData">
         <div class="setting-info">
           <div class="setting-icon">🗑️</div>
@@ -224,7 +261,7 @@
       <ul class="privacy-list">
         <li>数据优先存储本地，登录账号后同步到云端</li>
         <li>所有数据传输均通过 HTTPS 加密</li>
-        <li>清除浏览器数据会导致本地数据丢失，建议定期导出备份</li>
+        <li>数据自动同步到云端，清除浏览器缓存不会丢失重要数据</li>
       </ul>
     </div>
 
@@ -239,12 +276,13 @@ import { useRouter } from "vue-router"
 import { getLoveDays } from "../composables/useStreak.js"
 import { useReminder } from "../composables/useReminder.js"
 import { useTheme } from "../composables/useTheme.js"
-import { useAuth } from "../composables/useDatabase.js"
+import { useAuth, useDatabase } from "../composables/useDatabase.js"
 const db = useAuth()
+const { searchUsers } = useDatabase()
 
 const { isDark, toggleDarkMode } = useTheme()
 const { currentUser, isAuthenticated, register, login, logout } = useAuth()
-const { state, girlfriendName: gfName, boyfriendName: bfName, loveAnniversary, notificationEnabled: notifEn, reminderTime: rt, customReminderTime: crt, setGirlfriendName, setBoyfriendName, setNotificationEnabled, updateSettings } = useDataStore()
+const { state, girlfriendName: gfName, boyfriendName: bfName, loveAnniversary, notificationEnabled: notifEn, reminderTime: rt, customReminderTime: crt, setGirlfriendName, setBoyfriendName, setNotificationEnabled, updateSettings, bindPartner, unbindPartner } = useDataStore()
 const router = useRouter()
 
 // Constants for template
@@ -280,6 +318,49 @@ const boyfriendName = computed({ get: () => bfName.value || '', set: v => setBoy
 function onGirlfriendNameBlur() { showToast({ message: "已保存", type: "success" }) }
 function onBoyfriendNameBlur() { showToast({ message: "已保存", type: "success" }) }
 
+// ========== 情侣绑定（照片墙共有） ==========
+const partnerKeyword = ref("")
+const partnerResults = ref([])
+const searchingPartner = ref(false)
+const showPartnerSearch = ref(false)
+
+async function onSearchPartner() {
+  const kw = partnerKeyword.value.trim()
+  if (!kw) { partnerResults.value = []; return }
+  searchingPartner.value = true
+  partnerResults.value = await searchUsers(kw)
+  searchingPartner.value = false
+}
+
+async function askBind(user) {
+  const name = user.display_name || user.username
+  try {
+    await showConfirmDialog({
+      title: "绑定另一半",
+      message: `确定与「${name}」绑定吗？绑定后你们的回忆照片墙将互相共享。`,
+    })
+  } catch { return }
+  const result = await bindPartner(user)
+  if (result.error) {
+    showToast({ message: result.error.message, type: "fail" })
+  } else {
+    showPartnerSearch.value = false
+    partnerKeyword.value = ""
+    partnerResults.value = []
+  }
+}
+
+async function confirmUnbind() {
+  try {
+    await showConfirmDialog({
+      title: "解除绑定",
+      message: "解除后照片墙将不再显示对方的照片，确定解除吗？",
+    })
+  } catch { return }
+  const result = await unbindPartner()
+  if (result.error) showToast({ message: result.error.message, type: "fail" })
+}
+
 // 提醒
 const reminderTime = computed({ get: () => rt.value || 'noon', set: v => updateSettings({ reminder_time: v }) })
 const customReminderTime = computed({ get: () => crt.value || '12:00', set: v => updateSettings({ custom_reminder_time: v }) })
@@ -309,53 +390,6 @@ function onCustomTimeChange() {
   updateSettings({ custom_reminder_time: customReminderTime.value })
   if (notificationEnabled.value) scheduleNotification()
   showToast({ message: "提醒时间已更新", type: "success" })
-}
-
-// 数据管理
-// fix: 删除重复的 ref 导入，已在文件顶部导入
-const importInputRef = ref(null)
-async function exportData() {
-  const data = {
-    checkins: state.checkinHistory,
-    wishes: state.wishes,
-    messages: state.messages,
-    anniversaries: state.anniversaries,
-    lunchHistory: state.lunchHistory,
-    restaurantPrefs: state.restaurantPrefs,
-    settings: state.settings,
-    checkinStats: state.checkinStats,
-    exportedAt: new Date().toISOString()
-  }
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `love-app-backup-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  showToast({ message: "导出成功", type: "success" })
-}
-
-function triggerImport() { importInputRef.value?.click() }
-
-async function importData(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-  try {
-    const text = await file.text()
-    const data = JSON.parse(text)
-    if (!data || typeof data !== "object") {
-      throw new Error("invalid format")
-    }
-
-    if (data.settings && typeof data.settings === "object") {
-      await updateSettings(data.settings)
-    }
-    showToast({ message: "导入成功，页面将刷新", type: "success" })
-    setTimeout(() => location.reload(), 1000)
-  } catch {
-    showToast({ message: "导入失败：文件格式错误", type: "fail" })
-  }
 }
 
 async function confirmClearAllData() {
@@ -482,6 +516,27 @@ function formatDate(dateStr) {
 .setting-action { flex-shrink: 0; display: flex; align-items: center; }
 .setting-arrow { font-size: 18px; color: var(--text-tertiary); }
 .manage-link { font-size: var(--font-caption); color: var(--primary); font-weight: 500; }
+.unbind-link { font-size: var(--font-caption); color: var(--danger); font-weight: 500; }
+
+/* === 另一半搜索绑定区 === */
+.partner-search { padding: 0 0 var(--space-md); }
+.partner-search-bar { display: flex; gap: var(--space-sm); padding: 0 0 var(--space-md); }
+.partner-input { flex: 1; }
+.partner-results { display: flex; flex-direction: column; }
+.partner-result-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px var(--space-xs); border-top: 0.5px solid var(--border-light);
+  cursor: pointer;
+}
+.partner-result-item:active { opacity: 0.6; }
+.partner-result-text { display: flex; flex-direction: column; gap: 2px; }
+.partner-result-name { font-size: var(--font-body-small); color: var(--text); font-weight: 500; }
+.partner-result-username { font-size: var(--font-caption); color: var(--text-secondary); }
+.partner-bind-btn {
+  font-size: var(--font-caption); color: #FFFFFF; background: var(--primary);
+  padding: 4px 14px; border-radius: var(--radius-round); flex-shrink: 0;
+}
+.partner-empty { text-align: center; font-size: var(--font-caption); color: var(--text-secondary); padding: var(--space-md) 0; }
 
 /* iOS 风格分割线（缩进） */
 .setting-divider {

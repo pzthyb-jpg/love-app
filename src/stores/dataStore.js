@@ -26,6 +26,10 @@ const state = reactive({
   settings: null,           // user_settings 记录
   checkinStats: null,       // checkin_stats 记录
 
+  // 另一半数据（情侣绑定后加载，用于照片墙共有）
+  partnerInfo: null,        // 另一半用户信息 { id, username, display_name }
+  partnerCheckins: [],      // 另一半的打卡记录
+
   // 本地设置 (保留 localStorage)
   restaurants: loadRestaurants(),
   adminPassword: { hash: '', salt: '', legacyHash: '' },
@@ -101,6 +105,8 @@ async function loadAllData() {
     state.restaurantPrefs = []
     state.settings = null
     state.checkinStats = null
+    state.partnerInfo = null
+    state.partnerCheckins = []
     state.isDataLoaded = false
     return
   }
@@ -126,9 +132,31 @@ async function loadAllData() {
     state.settings = settings
     state.checkinStats = stats
     state.isDataLoaded = true
+
+    // 情侣绑定：加载另一半信息 + 打卡照片（不阻塞主流程，失败静默）
+    loadPartnerData(settings?.partner_id)
   } catch (e) {
     console.error('加载数据失败:', e)
     state.isDataLoaded = false
+  }
+}
+
+// 加载另一半数据（照片墙共有）
+async function loadPartnerData(partnerId) {
+  if (!partnerId) {
+    state.partnerInfo = null
+    state.partnerCheckins = []
+    return
+  }
+  try {
+    const [info, checkins] = await Promise.all([
+      db.getUserById(partnerId),
+      db.getPartnerCheckins(partnerId),
+    ])
+    state.partnerInfo = info
+    state.partnerCheckins = checkins || []
+  } catch (e) {
+    console.error('加载另一半数据失败:', e)
   }
 }
 
@@ -162,6 +190,31 @@ function setNotificationEnabled(enabled) {
 
 function setThemePref(theme) {
   updateSettings({ theme_pref: theme })
+}
+
+// ========== 情侣绑定 (照片墙共有) ==========
+
+async function bindPartner(partner) {
+  const result = await db.bindPartner(partner.id)
+  if (result.error) return result
+  // 更新本地状态
+  if (state.settings) state.settings.partner_id = partner.id
+  state.partnerInfo = { id: partner.id, username: partner.username, display_name: partner.display_name }
+  // 加载对方打卡照片
+  await loadPartnerData(partner.id)
+  showToast({ message: '💑 绑定成功，照片墙已合并', type: 'success' })
+  return result
+}
+
+async function unbindPartner() {
+  const partnerId = state.settings?.partner_id
+  const result = await db.unbindPartner(partnerId)
+  if (result.error) return result
+  if (state.settings) state.settings.partner_id = null
+  state.partnerInfo = null
+  state.partnerCheckins = []
+  showToast({ message: '已解除绑定', type: 'success' })
+  return result
 }
 
 // ========== 打卡操作 ==========
@@ -544,6 +597,9 @@ export function useDataStore() {
     setAnniversary,
     setNotificationEnabled,
     setThemePref,
+    // 情侣绑定
+    bindPartner,
+    unbindPartner,
     // 打卡
     addCheckin,
     addQuickCheckin,
