@@ -224,6 +224,11 @@ onMounted(() => {
   border: 2px solid var(--anniv-gold);
 }
 
+html[data-theme="dark"] .anniv-card.today {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.06));
+  box-shadow: none;
+}
+
 /* 卡片顶部 */
 .card-top {
   display: flex;
@@ -309,6 +314,11 @@ onMounted(() => {
   background: #FFF0F0;
   color: #E8758A;
   border: 1px solid #FFD0D0;
+}
+
+html[data-theme="dark"] .btn-delete {
+  background: rgba(232, 117, 138, 0.15);
+  border-color: rgba(232, 117, 138, 0.3);
 }
 
 /* FAB */

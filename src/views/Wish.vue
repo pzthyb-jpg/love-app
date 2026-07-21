@@ -68,25 +68,6 @@
       </div>
     </div>
 
-    <!-- 数据导出/导入 -->
-    <div class="card data-actions-card">
-      <div class="data-actions">
-        <van-button plain size="small" @click="exportData" aria-label="导出数据">
-          📤 导出
-        </van-button>
-        <van-button plain size="small" @click="triggerImport" aria-label="导入数据">
-          📥 导入
-        </van-button>
-        <input
-          ref="importInputRef"
-          type="file"
-          accept=".json"
-          style="display:none"
-          @change="importData"
-        />
-      </div>
-    </div>
-
     <!-- 留言详情弹窗 -->
     <Teleport to="body">
       <div v-if="showAllMessages" class="dialog-overlay" @click.self="showAllMessages = false">
@@ -154,16 +135,14 @@ import { useDataStore } from '../stores/dataStore.js'
 import { getTodaysMessage, formatMessageText } from '../composables/useMessages.js'
 import { getTodayStr, getLoveDays } from '../composables/useStreak.js'
 import { hapticFeedback, HAPTIC_PATTERNS } from '../composables/useHaptics.js'
-import { safeGetJSON, safeSetJSON, STORAGE_KEYS } from '../composables/useStorage.js'
 
 const router = useRouter()
-const { state, addWish, updateWish, deleteWish, girlfriendName, boyfriendName, loveAnniversary } = useDataStore()
+const { state, updateWish, deleteWish, loveAnniversary } = useDataStore()
 
 const activeFilter = ref('all')
 const showAllMessages = ref(false)
 const showActionMenu = ref(false)
 const selectedWish = ref(null)
-const importInputRef = ref(null)
 const bubbleAreaRef = ref(null)
 
 // 标记实现弹窗
@@ -321,107 +300,6 @@ function confirmDelete() {
     showToast({ message: '已删除' })
   }).catch(() => {})
   closeActionMenu()
-}
-
-// 数据导出（ZIP 完整备份）
-async function exportData() {
-  try {
-    const JSZip = (await import('jszip')).default
-    const zip = new JSZip()
-    
-    // 元数据
-    const meta = {
-      version: '2.0',
-      exportedAt: new Date().toISOString(),
-      wishes: state.wishes,
-      messages: state.messages,
-      settings: {
-        girlfriendName: girlfriendName.value || '',
-        boyfriendName: boyfriendName.value || '',
-        anniversary: loveAnniversary.value || ''
-      }
-    }
-    zip.file('metadata.json', JSON.stringify(meta, null, 2))
-    
-    // 提醒设置
-    const reminderEnabled = localStorage.getItem('reminder_enabled') !== 'false'
-    const reminderTime = localStorage.getItem('reminder_time') || '08:00'
-    
-    // 照片（localStorage）
-    const photosFolder = zip.folder('photos')
-    try {
-      const allPhotos = safeGetJSON(STORAGE_KEYS.PHOTOS || 'love_photos_v2', [])
-      if (Array.isArray(allPhotos)) {
-        allPhotos.forEach((p, i) => {
-          const photoData = typeof p === 'string' ? p : p?.photo
-          if (photoData) {
-            const base64Data = photoData.split(',')[1] || photoData
-            photosFolder.file(`photo_${i}.jpg`, base64Data, { base64: true })
-          }
-        })
-      }
-    } catch (e) {
-      // 跳过照片
-    }
-    
-    const blob = await zip.generateAsync({ type: 'blob' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `小皮完整备份_${getTodayStr()}.zip`
-    a.click()
-    URL.revokeObjectURL(url)
-    showToast({ message: '📦 完整备份已下载', type: 'success' })
-  } catch (e) {
-    // 降级为纯 JSON
-    const data = {
-      version: '2.0',
-      exportedAt: new Date().toISOString(),
-      wishes: state.wishes
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `愿望池备份_${getTodayStr()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    showToast({ message: '💾 备份已下载', type: 'success' })
-  }
-}
-
-function triggerImport() {
-  importInputRef.value?.click()
-}
-
-function importData(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result)
-      if (!data.version || !data.wishes) {
-        showToast({ message: '⚠️ 格式不正确，导入失败', type: 'fail' })
-        return
-      }
-      // 合并导入
-      const existingIds = new Set(state.wishes.map(w => w.id))
-      const newWishes = data.wishes.filter(w => !existingIds.has(w.id))
-      if (newWishes.length === 0) {
-        showToast({ message: '没有新的内容可导入' })
-        return
-      }
-      newWishes.forEach(w => addWish(w))
-      showToast({ message: `📥 成功导入 ${newWishes.length} 条内容`, type: 'success' })
-    } catch (err) {
-      showToast({ message: '⚠️ 文件解析失败', type: 'fail' })
-    }
-  }
-  reader.readAsText(file)
-  // 重置 input 以便重复选择同一文件
-  event.target.value = ''
 }
 </script>
 
@@ -611,6 +489,37 @@ van-field ::placeholder {
   opacity: 0.7;
 }
 
+/* === 深色模式气泡适配 === */
+html[data-theme="dark"] .wish-bubble.wish {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(124, 58, 237, 0.10));
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .wish-bubble.wish .bubble-text {
+  color: #C4B5FD;
+}
+
+html[data-theme="dark"] .wish-bubble.vent {
+  background: linear-gradient(135deg, rgba(214, 59, 95, 0.18), rgba(214, 59, 95, 0.10));
+  border: 1px solid rgba(251, 113, 133, 0.25);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .wish-bubble.vent .bubble-text {
+  color: #FDA4AF;
+}
+
+html[data-theme="dark"] .wish-bubble.fulfilled {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(251, 191, 36, 0.08)) !important;
+  border: 1px solid rgba(251, 191, 36, 0.25) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .wish-bubble.fulfilled .bubble-text {
+  color: #FCD34D !important;
+}
+
 .bubble-deco {
   font-size: 14px;
   margin-bottom: var(--space-xs);
@@ -709,6 +618,27 @@ van-field ::placeholder {
   color: #C62828;
 }
 
+/* === 深色模式标签适配 === */
+html[data-theme="dark"] .msg-type-tag.morning {
+  background: rgba(21, 101, 192, 0.25);
+  color: #90CAF9;
+}
+
+html[data-theme="dark"] .msg-type-tag.evening {
+  background: rgba(123, 31, 162, 0.25);
+  color: #CE93D8;
+}
+
+html[data-theme="dark"] .msg-type-tag.random {
+  background: rgba(230, 81, 0, 0.25);
+  color: #FFCC80;
+}
+
+html[data-theme="dark"] .msg-type-tag.special {
+  background: rgba(198, 40, 40, 0.25);
+  color: #EF9A9A;
+}
+
 .message-text {
   font-size: var(--font-body);
   color: var(--text);
@@ -719,17 +649,6 @@ van-field ::placeholder {
 .message-author {
   font-size: var(--font-caption);
   color: var(--text-secondary);
-}
-
-/* 数据操作 */
-.data-actions-card {
-  padding: var(--space-md) var(--space-xl);
-}
-
-.data-actions {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-lg);
 }
 
 /* 长按进度环 */

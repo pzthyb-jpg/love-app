@@ -58,7 +58,9 @@ async function getLocationByIpApi() {
 }
 
 /**
- * 浏览器 GPS 定位（需要用户授权，精度街道级）
+ * 浏览器 GPS 定位（需要用户授权）
+ * 使用 watchPosition 持续监听，优先返回高精度定位（<=100m 街道级），
+ * 避免使用过时缓存（maximumAge:0），并防止 GPS 未锁定就超时降级到 IP 定位
  */
 function getGPSLocation() {
   return new Promise((resolve) => {
@@ -67,24 +69,46 @@ function getGPSLocation() {
       return
     }
 
-    navigator.geolocation.getCurrentPosition(
+    let settled = false
+    let best = null
+    let watchId = null
+
+    const finish = (result) => {
+      if (settled) return
+      settled = true
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+      resolve(result)
+    }
+
+    watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        resolve({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
-        })
+        const { latitude, longitude, accuracy } = pos.coords
+        // 记录目前精度最高的一次定位
+        if (!best || accuracy < best.accuracy) {
+          best = { latitude, longitude, accuracy }
+        }
+        // 拿到街道级高精度定位立即返回
+        if (accuracy <= 100) {
+          finish(best)
+        }
       },
       (err) => {
-        console.warn('GPS 定位失败:', err.message)
-        resolve(null)
+        // 权限拒绝 → 立即返回 null 走降级；
+        // 超时等其他错误交给下方兼容定时器处理，不提前放弃
+        if (err.code === 1) {
+          console.warn('定位权限被拒绝')
+          finish(null)
+        }
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000 // 5 分钟缓存
+        timeout: 15000,
+        maximumAge: 0 // 强制实时定位，不复用缓存
       }
     )
+
+    // 兼容：10 秒内未拿到高精度定位，返回目前最佳结果（避免地图久等）
+    setTimeout(() => finish(best), 10000)
   })
 }
 

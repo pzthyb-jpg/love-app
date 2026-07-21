@@ -355,6 +355,27 @@ van-field ::placeholder {
   color: #C62828;
 }
 
+/* === 深色模式徽章适配 === */
+html[data-theme="dark"] .msg-type-badge.morning {
+  background: rgba(21, 101, 192, 0.25);
+  color: #90CAF9;
+}
+
+html[data-theme="dark"] .msg-type-badge.evening {
+  background: rgba(123, 31, 162, 0.25);
+  color: #CE93D8;
+}
+
+html[data-theme="dark"] .msg-type-badge.random {
+  background: rgba(230, 81, 0, 0.25);
+  color: #FFCC80;
+}
+
+html[data-theme="dark"] .msg-type-badge.special {
+  background: rgba(198, 40, 40, 0.25);
+  color: #EF9A9A;
+}
+
 .msg-date {
   font-size: var(--font-caption);
   color: var(--text-secondary);

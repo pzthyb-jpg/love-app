@@ -179,11 +179,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useAuth } from '../composables/useDatabase.js'
 import { getLocation } from '../composables/useLocation.js'
+import { useTheme } from '../composables/useTheme.js'
 import {
   useLocationShare,
   calcDistance,
@@ -193,6 +194,7 @@ import {
 const { currentUser } = useAuth()
 const locationShare = useLocationShare()
 const router = useRouter()
+const { isDark } = useTheme()
 
 // ========== 状态 ==========
 
@@ -433,11 +435,11 @@ async function initMap() {
   const vh = window.innerHeight
   mapHeight.value = vh - 60 - (hasActiveShares.value ? 80 : 140)
 
-  // 创建地图
+  // 创建地图（根据当前主题选择地图样式）
   mapInstance = new AMap.Map('location-map', {
     zoom: 15,
     center: [myLng.value, myLat.value],
-    mapStyle: 'amap://styles/normal',
+    mapStyle: isDark.value ? 'amap://styles/dark' : 'amap://styles/normal',
   })
 
   // 添加自身标记
@@ -464,6 +466,13 @@ function retryMapLoad() {
   mapLoadError.value = false
   initMap()
 }
+
+// 主题切换时实时更新地图样式
+watch(isDark, (dark) => {
+  if (mapInstance && typeof mapInstance.setMapStyle === 'function') {
+    mapInstance.setMapStyle(dark ? 'amap://styles/dark' : 'amap://styles/normal')
+  }
+})
 
 async function myGetLocation() {
   return await getLocation()
@@ -506,7 +515,7 @@ function startLocationTracking() {
           showPermissionTip.value = true
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
   }
 }
@@ -884,6 +893,21 @@ van-field ::placeholder {
   cursor: pointer;
   padding: 4px;
   margin-left: auto;
+}
+
+/* === 深色模式权限提示适配 === */
+html[data-theme="dark"] .permission-tip {
+  background: rgba(251, 191, 36, 0.15);
+  color: #FCD34D;
+}
+
+html[data-theme="dark"] .tip-btn {
+  background: #FBBF24;
+  color: #1C1C1E;
+}
+
+html[data-theme="dark"] .tip-close {
+  color: #FCD34D;
 }
 
 /* 空状态 */

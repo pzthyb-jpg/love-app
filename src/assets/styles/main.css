@@ -378,6 +378,16 @@ html[data-theme="dark"] .btn-secondary {
   color: var(--text);
 }
 
+/* 深色下按钮文字保持白色（--white 已被用作深色浮层背景） */
+html[data-theme="dark"] .btn-primary,
+html[data-theme="dark"] .btn-danger {
+  color: #FFFFFF;
+}
+
+html[data-theme="dark"] .btn-primary:hover {
+  background: var(--primary-dark);
+}
+
 html[data-theme="dark"] .dialog-box {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }

@@ -539,6 +539,14 @@ const quickCheckin = async () => {
   color: #7C3AED;
 }
 
+/* === 深色模式状态圆圈文字适配 === */
+html[data-theme="dark"] .status-circle.done .circle-label {
+  color: #6EE7B7;
+}
+html[data-theme="dark"] .status-circle.has-new .circle-label {
+  color: #C4B5FD;
+}
+
 /* 留言预览 */
 .message-preview-card {
   cursor: pointer;

@@ -482,6 +482,11 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+html[data-theme="dark"] .manage-close-btn {
+  background: rgba(220, 38, 38, 0.2);
+  color: #FCA5A5;
+}
+
 .manage-unblock-btn {
   border: none;
   background: var(--bg);

@@ -384,6 +384,10 @@ onMounted(async () => {
   color: var(--white);
 }
 
+html[data-theme="dark"] .capsule-btn.active {
+  color: #FFFFFF;
+}
+
 /* ===== Tab Content ===== */
 .tab-content {
   flex: 1;
@@ -498,6 +502,10 @@ onMounted(async () => {
   border-color: var(--primary);
 }
 
+html[data-theme="dark"] .tag.active {
+  color: #FFFFFF;
+}
+
 /* POI 列表 */
 .poi-list {
   padding: 8px 16px;
@@ -582,6 +590,10 @@ onMounted(async () => {
   border-color: var(--primary);
   background: #FFF0F3;
   color: var(--primary);
+}
+
+html[data-theme="dark"] .fav-btn.active {
+  background: rgba(232, 117, 138, 0.2);
 }
 
 .poi-empty {
@@ -729,6 +741,10 @@ onMounted(async () => {
   border-color: var(--primary);
 }
 
+html[data-theme="dark"] .city-btn.active {
+  color: #FFFFFF;
+}
+
 /* ===== 餐厅管理 ===== */
 .manage-card {
   margin: 0 16px;
@@ -790,7 +806,7 @@ onMounted(async () => {
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.8);
-  color: var(--white);
+  color: #FFFFFF;
   padding: 10px 20px;
   border-radius: 20px;
   font-size: 13px;
